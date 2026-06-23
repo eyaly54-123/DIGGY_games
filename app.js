@@ -2413,27 +2413,6 @@ document.getElementById('settings-nav-btn').addEventListener('click', () => {
   navigateTo('#/settings');
 });
 
-// Home sidebar item click listener
-document.getElementById('home-nav-btn').addEventListener('click', () => {
-  navigateTo('#/');
-});
-
-// Developer sidebar nav button click listener
-const devNav = document.getElementById('dev-nav-btn');
-if (devNav) {
-  devNav.addEventListener('click', () => {
-    navigateTo('#/dev');
-  });
-}
-
-// Admin sidebar nav button click listener
-const adminNav = document.getElementById('admin-nav-btn');
-if (adminNav) {
-  adminNav.addEventListener('click', () => {
-    navigateTo('#/admin');
-  });
-}
-
 // --- RESEND EMAIL INBOX SIMULATOR UI ---
 function setupInboxWidget() {
   const widget = document.createElement('div');
