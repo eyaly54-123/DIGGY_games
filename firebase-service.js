@@ -1102,28 +1102,45 @@ export function removeWebAuthnCredential(uid) {
 
 export const simulatedEmails = [];
 
-function getResendSettings() {
+function getEmailJSSettings() {
   const globalScope = typeof window !== 'undefined' ? window : null;
-  const apiKey = (localStorage.getItem('diggy_resend_api_key') || globalScope?.__DIGGY_RESEND_API_KEY__ || '').trim();
-  const fromAddress = (localStorage.getItem('diggy_resend_from') || globalScope?.__DIGGY_RESEND_FROM__ || 'DIGGY Games <noreply@diggy.com>').trim();
+  const serviceId = (localStorage.getItem('diggy_emailjs_service_id') || globalScope?.__DIGGY_EMAILJS_SERVICE_ID__ || '').trim();
+  const templateId = (localStorage.getItem('diggy_emailjs_template_id') || globalScope?.__DIGGY_EMAILJS_TEMPLATE_ID__ || '').trim();
+  const publicKey = (localStorage.getItem('diggy_emailjs_public_key') || globalScope?.__DIGGY_EMAILJS_PUBLIC_KEY__ || '').trim();
+  const fromName = (localStorage.getItem('diggy_emailjs_from_name') || globalScope?.__DIGGY_EMAILJS_FROM_NAME__ || 'DIGGY Games').trim();
 
   return {
-    apiKey,
-    from: fromAddress || 'DIGGY Games <noreply@diggy.com>',
-    enabled: Boolean(apiKey && apiKey !== 're_your_api_key_here')
+    serviceId,
+    templateId,
+    publicKey,
+    fromName: fromName || 'DIGGY Games',
+    enabled: Boolean(serviceId && templateId && publicKey)
   };
 }
 
-export function setResendConfig(apiKey, fromAddress) {
-  const normalizedKey = (apiKey || '').trim();
-  const normalizedFrom = (fromAddress || '').trim();
-  localStorage.setItem('diggy_resend_api_key', normalizedKey);
-  localStorage.setItem('diggy_resend_from', normalizedFrom || 'DIGGY Games <noreply@diggy.com>');
-  return getResendSettings();
+export function setEmailJSConfig(serviceId, templateId, publicKey, fromName) {
+  const normalizedServiceId = (serviceId || '').trim();
+  const normalizedTemplateId = (templateId || '').trim();
+  const normalizedPublicKey = (publicKey || '').trim();
+  const normalizedFromName = (fromName || '').trim();
+
+  localStorage.setItem('diggy_emailjs_service_id', normalizedServiceId);
+  localStorage.setItem('diggy_emailjs_template_id', normalizedTemplateId);
+  localStorage.setItem('diggy_emailjs_public_key', normalizedPublicKey);
+  localStorage.setItem('diggy_emailjs_from_name', normalizedFromName || 'DIGGY Games');
+  return getEmailJSSettings();
+}
+
+export function setResendConfig(serviceId, templateId, publicKey, fromName) {
+  return setEmailJSConfig(serviceId, templateId, publicKey, fromName);
+}
+
+export function getEmailJSConfigState() {
+  return getEmailJSSettings();
 }
 
 export function getResendConfigState() {
-  return getResendSettings();
+  return getEmailJSSettings();
 }
 
 export async function sendEmailViaResend(to, subject, htmlContent) {
@@ -1136,58 +1153,51 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
     timestamp: Date.now()
   };
   
-  const resendSettings = getResendSettings();
+  const emailJSSettings = getEmailJSSettings();
 
-  // Try real Resend API if configured
-  if (resendSettings.enabled) {
+  if (emailJSSettings.enabled && typeof window !== 'undefined' && window.emailjs) {
     try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendSettings.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: resendSettings.from,
-          to: [to],
-          subject: subject,
-          html: htmlContent
-        })
-      });
+      if (emailJSSettings.publicKey && typeof window.emailjs.init === 'function') {
+        window.emailjs.init(emailJSSettings.publicKey);
+      }
 
-      if (response.ok) {
-        const data = await response.json();
+      const response = await window.emailjs.send(
+        emailJSSettings.serviceId,
+        emailJSSettings.templateId,
+        {
+          to_email: to,
+          subject,
+          message: htmlContent,
+          message_html: htmlContent,
+          reply_to: to,
+          from_name: emailJSSettings.fromName
+        },
+        emailJSSettings.publicKey
+      );
+
+      if (response?.status === 200) {
         emailLog.status = 'sent';
-        emailLog.messageId = data.id;
-        console.log(`[Email Sent via Resend] to: ${to} | subject: ${subject} | id: ${data.id}`);
+        emailLog.messageId = response?.text || response?.id;
+        console.log(`[Email Sent via EmailJS] to: ${to} | subject: ${subject} | id: ${response?.text || response?.id}`);
       } else {
-        const error = await response.json();
-        console.error('[Resend API Error]', error);
-        emailLog.status = 'failed';
-        emailLog.error = error.message;
-        // Fallback to simulation
-        simulatedEmails.unshift(emailLog);
-        window.dispatchEvent(new CustomEvent('diggy-email-sent', { detail: emailLog }));
-        return { success: false, mode: 'api_failed', error: error.message, email: emailLog };
+        throw new Error('EmailJS failed to send the message.');
       }
     } catch (error) {
-      console.error('[Resend API Network Error]', error);
+      console.error('[EmailJS Error]', error);
       emailLog.status = 'failed';
       emailLog.error = error.message;
-      // Fallback to simulation
       simulatedEmails.unshift(emailLog);
       window.dispatchEvent(new CustomEvent('diggy-email-sent', { detail: emailLog }));
-      return { success: false, mode: 'network_error', error: error.message, email: emailLog };
+      return { success: false, mode: 'emailjs_failed', error: error.message, email: emailLog };
     }
   } else {
-    // Simulation mode
     emailLog.status = 'simulated';
     console.log(`[Email Simulated] to: ${to} | subject: ${subject}`);
   }
-  
+
   simulatedEmails.unshift(emailLog);
   window.dispatchEvent(new CustomEvent('diggy-email-sent', { detail: emailLog }));
-  return { success: true, mode: resendSettings.enabled ? 'api' : 'simulated', email: emailLog };
+  return { success: true, mode: emailJSSettings.enabled ? 'emailjs' : 'simulated', email: emailLog };
 }
 
 async function sendStatusEmail(to, name, type, status, reason) {

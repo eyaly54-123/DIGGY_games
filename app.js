@@ -1734,23 +1734,31 @@ async function renderAdmin() {
       <div class="support-chat-content" id="admin-support-thread-content"></div>
     </div>
 
-    <!-- Resend Configuration Section -->
-    <div class="section-title">הגדרות Resend ואימיילים</div>
+    <!-- EmailJS Configuration Section -->
+    <div class="section-title">הגדרות EmailJS ואימיילים</div>
     <div class="data-table-container" style="padding: 20px;">
       <div class="form-group">
-        <label>מפתח Resend API</label>
-        <input type="password" id="resend-api-key" value="${getResendConfigState().apiKey || ''}" placeholder="re_...">
+        <label>Service ID</label>
+        <input type="text" id="emailjs-service-id" value="${getResendConfigState().serviceId || ''}" placeholder="service_xxxxx">
       </div>
       <div class="form-group">
-        <label>כתובת שולח (Sender)</label>
-        <input type="text" id="resend-from" value="${getResendConfigState().from || 'DIGGY Games <noreply@diggy.com>'}" placeholder="DIGGY Games <noreply@yourdomain.com>">
+        <label>Template ID</label>
+        <input type="text" id="emailjs-template-id" value="${getResendConfigState().templateId || ''}" placeholder="template_xxxxx">
+      </div>
+      <div class="form-group">
+        <label>Public Key</label>
+        <input type="password" id="emailjs-public-key" value="${getResendConfigState().publicKey || ''}" placeholder="public_key">
+      </div>
+      <div class="form-group">
+        <label>שם שולח</label>
+        <input type="text" id="emailjs-from-name" value="${getResendConfigState().fromName || 'DIGGY Games'}" placeholder="DIGGY Games">
       </div>
       <div class="form-group">
         <label>כתובת תמיכה לאדמין</label>
         <input type="email" id="support-admin-email" value="${localStorage.getItem('diggy_support_admin_email') || 'support@diggy-arena.com'}" placeholder="support@yourdomain.com">
       </div>
-      <button class="btn btn-primary" id="save-resend-config-btn" style="margin-top: 10px;"><i class="fas fa-save"></i> שמור הגדרות Resend</button>
-      <p style="margin-top: 10px; color: var(--text-muted); font-size: 13px;">ההגדרות נשמרות ב-localStorage של הדפדפן. לשימוש אמיתי יש להגדיר דומיין מאומת ב-Resend ולשמור מפתח API תקין.</p>
+      <button class="btn btn-primary" id="save-resend-config-btn" style="margin-top: 10px;"><i class="fas fa-save"></i> שמור הגדרות EmailJS</button>
+      <p style="margin-top: 10px; color: var(--text-muted); font-size: 13px;">ב-EmailJS יש ליצור Service, Template עם שדות: to_email, subject, message, message_html, reply_to, from_name.</p>
     </div>
 
     <!-- Users Management Section -->
@@ -1784,14 +1792,16 @@ async function renderAdmin() {
   const saveResendBtn = document.getElementById('save-resend-config-btn');
   if (saveResendBtn) {
     saveResendBtn.addEventListener('click', () => {
-      const apiKey = document.getElementById('resend-api-key').value;
-      const fromAddress = document.getElementById('resend-from').value;
+      const serviceId = document.getElementById('emailjs-service-id').value;
+      const templateId = document.getElementById('emailjs-template-id').value;
+      const publicKey = document.getElementById('emailjs-public-key').value;
+      const fromName = document.getElementById('emailjs-from-name').value;
       const adminEmail = document.getElementById('support-admin-email').value;
-      setResendConfig(apiKey, fromAddress);
+      setResendConfig(serviceId, templateId, publicKey, fromName);
       if (adminEmail) {
         localStorage.setItem('diggy_support_admin_email', adminEmail);
       }
-      showToast('הגדרות Resend נשמרו.', 'success');
+      showToast('הגדרות EmailJS נשמרו.', 'success');
     });
   }
 
