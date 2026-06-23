@@ -150,6 +150,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
 
   setupInboxWidget();
+  setupSidebarNavigation();
 
   // Listen to Auth state (Firebase or LocalStorage fallback)
   onAuthStateListener(async (user) => {
@@ -157,10 +158,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       state.user = user;
       applyTheme(user.customTheme || '#00ff66');
       renderUserBadge();
+      setupSidebarNavigation(); // Rebuild sidebar when user changes
     } else {
       state.user = null;
       applyTheme('#00ff66');
       renderUserBadge();
+      setupSidebarNavigation(); // Rebuild sidebar when user logs out
     }
     
     // Refresh current route to apply auth permissions
@@ -238,9 +241,11 @@ async function renderHome() {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       tabs.forEach(t => {
+        t.classList.remove('active-cat');
         t.style.borderColor = 'rgba(255, 255, 255, 0.05)';
         t.style.background = 'transparent';
       });
+      tab.classList.add('active-cat');
       tab.style.borderColor = 'var(--accent-color)';
       tab.style.background = 'var(--accent-dim)';
       renderGamesGrid(tab.getAttribute('data-category'));
