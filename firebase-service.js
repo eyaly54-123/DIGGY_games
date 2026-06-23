@@ -194,12 +194,14 @@ export async function signUpUser(username, password) {
       return userDoc;
     } catch (error) {
       console.warn("Firebase sign up failed. Falling back to LocalStorage auth.", error);
-      // Fallback: If registration failed due to config/provider error, proceed with local
-      if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/internal-error' || error.message.includes('permission')) {
-        fallbackMode = true; // Switch permanently to local fallback for this session
-      } else {
-        throw error; // Re-throw real user errors (like email already in use)
+      if (error.code === 'auth/email-already-in-use' || error.message === 'Username is already taken.') {
+        throw new Error("שם המשתמש כבר תפוס במערכת!");
       }
+      if (error.code === 'auth/weak-password') {
+        throw new Error("הסיסמה חלשה מדי!");
+      }
+      fallbackMode = true;
+      console.log("Switched to LocalStorage fallback due to error:", error.message || error);
     }
   }
 
@@ -243,10 +245,16 @@ export async function logInUser(username, password) {
       throw new Error("User profile not found in database.");
     } catch (error) {
       console.warn("Firebase sign in failed. Attempting LocalStorage auth fallback.", error);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      if (
+        error.code === 'auth/user-not-found' || 
+        error.code === 'auth/wrong-password' || 
+        error.code === 'auth/invalid-credential' ||
+        error.code === 'auth/invalid-email'
+      ) {
         throw new Error("שם המשתמש או הסיסמה שגויים!");
       }
       fallbackMode = true; // Switch to local backup
+      console.log("Switched to LocalStorage login fallback due to error:", error.message || error);
     }
   }
 
