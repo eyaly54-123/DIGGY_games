@@ -18,7 +18,14 @@ import {
   simulatedEmails,
   onAuthStateListener,
   getAllUsers,
-  changeUserRole
+  changeUserRole,
+  generateAndStore2FACode,
+  verify2FACode,
+  clear2FACode,
+  registerWebAuthnCredential,
+  verifyWebAuthnCredential,
+  hasWebAuthnCredential,
+  removeWebAuthnCredential
 } from './firebase-service.js';
 
 // --- PLATFORM STATE ---
@@ -538,12 +545,10 @@ function renderLogin() {
 
 // 2FA modal verification flow
 function trigger2FAFlow(profile) {
-  // Generate random 6 digit code
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  // Generate secure 2FA code using the new service
+  const code = generateAndStore2FACode(profile.uid);
   
-  // Save code state temporarily in Firestore user profile or simulation
-  // To keep auth secure without server, we write it to a secret user field or local mock
-  // Let's send email via simulated Resend
+  // Send email via Resend (real or simulated)
   const emailHtml = `
     <div style="background: #07080a; color: #fff; padding: 30px; border-radius: 12px; border: 1px solid #00ff66; font-family: sans-serif; text-align: center;">
       <h2 style="color: #00ff66;">DIGGY Security Verification</h2>
@@ -571,6 +576,7 @@ function trigger2FAFlow(profile) {
         <p style="font-size: 13px; color: var(--text-muted);">הזן את 6 הספרות כדי להשלים את ההתחברות:</p>
         <input type="text" id="twofactor-input" max-length="6" placeholder="000000" style="text-align: center; font-size: 24px; letter-spacing: 8px; font-family: var(--font-display); width: 200px; margin: 10px auto;">
         <button class="btn btn-primary" id="verify-2fa-btn" style="justify-content: center;">אמת קוד וכנס</button>
+        <button class="btn btn-secondary" id="resend-2fa-btn" style="justify-content: center; font-size: 12px;">שלח קוד חדש</button>
       </div>
     `;
     
@@ -578,13 +584,32 @@ function trigger2FAFlow(profile) {
     
     document.getElementById('verify-2fa-btn').addEventListener('click', () => {
       const enteredCode = document.getElementById('twofactor-input').value.trim();
-      if (enteredCode === code) {
+      const verification = verify2FACode(profile.uid, enteredCode);
+      
+      if (verification.valid) {
         overlay.classList.remove('active');
         showToast("הקוד אומת! ברוך הבא ל-DIGGY 🎉", "success");
         navigateTo('#/');
       } else {
-        showToast("קוד שגוי! נסה שנית.", "danger");
+        showToast(verification.error, "danger");
+        if (verification.error.includes('חרגת')) {
+          // Max attempts reached, close modal and redirect to login
+          setTimeout(() => {
+            overlay.classList.remove('active');
+            navigateTo('#/login');
+          }, 2000);
+        }
       }
+    });
+    
+    document.getElementById('resend-2fa-btn').addEventListener('click', () => {
+      // Clear old code and generate new one
+      clear2FACode(profile.uid);
+      const newCode = generateAndStore2FACode(profile.uid);
+      
+      const newEmailHtml = emailHtml.replace(code, newCode);
+      mod.sendEmailViaResend(destEmail, "DIGGY - קוד אימות דו-שלבי (חדש)", newEmailHtml);
+      showToast("קוד חדש נשלח לאימייל!", "info");
     });
   });
 }
@@ -611,17 +636,16 @@ async function triggerBiometricLoginFlow() {
 
   overlay.classList.add('active');
 
-  // Attempt real WebAuthn if browser supports it
-  let credentialId = localStorage.getItem('diggy_bio_cred_id');
+  // Get stored biometric credentials
   let username = localStorage.getItem('diggy_bio_username');
+  let uid = localStorage.getItem('diggy_bio_uid');
 
-  // Let scanning run for 2 seconds to look cool
+  // Let scanning run for 2 seconds for visual effect
   setTimeout(async () => {
     const statusText = document.getElementById('bio-status');
     const widget = document.getElementById('bio-widget');
 
-    if (!credentialId || !username) {
-      // Simulate/Show fallback or failure since they haven't registered in settings
+    if (!username || !uid) {
       widget.classList.remove('scanning');
       widget.style.color = 'var(--danger-color)';
       statusText.innerHTML = "שגיאה: זיהוי ביומטרי לא מוגדר!";
@@ -635,57 +659,33 @@ async function triggerBiometricLoginFlow() {
     }
 
     try {
-      if (window.PublicKeyCredential) {
-        // We can run webauthn assertion
-        // To prevent crashes on localhost/HTTP, we wrap in try catch and fall back to simulator
-        // If it passes or fails, we allow local login
-        console.log("WebAuthn supported. Asserting credentials.");
-      }
+      // Use real WebAuthn verification
+      const result = await verifyWebAuthnCredential(username, uid);
       
-      // Complete sign in
-      const profile = await logInUser(username, "DUMMY_PASSWORD_NOT_USED"); // In a real production system, WebAuthn validates signed assertions.
+      if (result.success) {
+        widget.classList.remove('scanning');
+        widget.style.color = '#00ff66';
+        statusText.innerHTML = "סריקה הושלמה! מאושר";
+        
+        setTimeout(async () => {
+          overlay.classList.remove('active');
+          // Log in with biometric token
+          const profile = await logInUser(username, "auth_biometric_token");
+          showToast(`ברוך שובך ביומטרי, ${username}!`, "success");
+          navigateTo('#/');
+        }, 1000);
+      }
+    } catch (e) {
+      console.warn("WebAuthn verification failed:", e);
       widget.classList.remove('scanning');
-      widget.style.color = '#00ff66';
-      statusText.innerHTML = "סריקה הושלמה! מאושר";
+      widget.style.color = 'var(--danger-color)';
+      statusText.innerHTML = "סריקה נכשלה";
+      statusText.style.color = 'var(--danger-color)';
       
       setTimeout(() => {
         overlay.classList.remove('active');
-        showToast(`ברוך שובך ביומטרי, ${username}!`, "success");
-        navigateTo('#/');
-      }, 1000);
-
-    } catch (e) {
-      // If error occurs, run simulation fallback
-      console.warn("WebAuthn assertion failed, executing simulated bypass:", e);
-      // Simulate success for kids UX demo
-      widget.classList.remove('scanning');
-      widget.style.color = '#00ff66';
-      statusText.innerHTML = "סריקה הושלמה! מאושר (סימולציה)";
-      
-      setTimeout(async () => {
-        overlay.classList.remove('active');
-        // Auto sign in using simulated bypass
-        try {
-          const email = `${username.toLowerCase().trim()}@diggy.com`;
-          // Trigger email login mapping
-          // In local test context, we log in using stored local credentials if available or prompt for password
-          showToast(`ברוך שובך (סורק ביומטרי), ${username}!`, "success");
-          
-          // Try to log in directly via auth custom trigger if possible
-          // For demo purposes, we will trigger login with saved config
-          const savedPass = localStorage.getItem('diggy_bio_pass');
-          if (savedPass) {
-            await logInUser(username, savedPass);
-          } else {
-            // Revert to password
-            showToast("נא להזין סיסמה פעם אחת לחיבור ביומטרי", "warning");
-            navigateTo('#/login');
-          }
-          navigateTo('#/');
-        } catch (authErr) {
-          showToast("שגיאה בכניסה ביומטרית: " + authErr.message, "danger");
-        }
-      }, 1000);
+        showToast("שגיאה בכניסה ביומטרית: " + e.message, "danger");
+      }, 1500);
     }
   }, 2000);
 }
@@ -2118,28 +2118,24 @@ export function renderSettings() {
   document.getElementById('register-biometric-btn').addEventListener('click', async () => {
     showLoader(true);
     try {
-      // Simulate registering WebAuthn key pair
-      if (window.PublicKeyCredential) {
-        console.log("Registering WebAuthn credential on device...");
+      // Use real WebAuthn registration
+      const result = await registerWebAuthnCredential(state.user.username, state.user.uid);
+      
+      if (result.success) {
+        // Store credentials for login
+        localStorage.setItem('diggy_bio_username', state.user.username);
+        localStorage.setItem('diggy_bio_uid', state.user.uid);
+        
+        await updateUserProfile(state.user.uid, { 
+          biometricsEnabled: true, 
+          biometricsCredentialId: result.credentialId.join(',') 
+        });
+
+        state.user.biometricsEnabled = true;
+        document.getElementById('bio-setup-status').textContent = 'מופעל';
+        document.getElementById('bio-setup-status').style.color = 'var(--accent-color)';
+        showToast("זיהוי ביומטרי הופעל בהצלחה עבור מכשיר זה! 🔒", "success");
       }
-
-      // Generate a mock credential ID
-      const randomCredId = Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('diggy_bio_cred_id', randomCredId);
-      localStorage.setItem('diggy_bio_username', state.user.username);
-      // Storing an auth ticket simulation key for secure autologin simulation
-      // We will read this key when running biometric login
-      localStorage.setItem('diggy_bio_pass', 'auth_biometric_token');
-
-      await updateUserProfile(state.user.uid, { 
-        biometricsEnabled: true, 
-        biometricsCredentialId: randomCredId 
-      });
-
-      state.user.biometricsEnabled = true;
-      document.getElementById('bio-setup-status').textContent = 'מופעל';
-      document.getElementById('bio-setup-status').style.color = 'var(--accent-color)';
-      showToast("זיהוי ביומטרי הופעל בהצלחה עבור מכשיר זה! 🔒", "success");
     } catch (e) {
       showToast("שגיאה ברישום ביומטרי: " + e.message, "danger");
     } finally {

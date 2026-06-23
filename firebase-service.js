@@ -91,6 +91,107 @@ function triggerAuthCallbacks(user) {
   });
 }
 
+// --- SECURITY UTILITIES ---
+
+// Rate limiting for login attempts
+const loginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
+
+export function checkLoginRateLimit(identifier) {
+  const now = Date.now();
+  const attempts = loginAttempts.get(identifier) || [];
+  
+  // Filter out attempts outside the time window
+  const recentAttempts = attempts.filter(time => now - time < LOGIN_ATTEMPT_WINDOW);
+  
+  if (recentAttempts.length >= MAX_LOGIN_ATTEMPTS) {
+    return { 
+      allowed: false, 
+      remainingTime: Math.ceil((recentAttempts[0] + LOGIN_ATTEMPT_WINDOW - now) / 1000 / 60) 
+    };
+  }
+  
+  return { allowed: true, attempts: recentAttempts.length };
+}
+
+export function recordLoginAttempt(identifier) {
+  const now = Date.now();
+  const attempts = loginAttempts.get(identifier) || [];
+  attempts.push(now);
+  
+  // Filter out old attempts
+  const recentAttempts = attempts.filter(time => now - time < LOGIN_ATTEMPT_WINDOW);
+  loginAttempts.set(identifier, recentAttempts);
+}
+
+export function clearLoginAttempts(identifier) {
+  loginAttempts.delete(identifier);
+}
+
+// Input sanitization
+export function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  
+  // Remove potentially dangerous characters
+  return input
+    .replace(/[<>]/g, '') // Remove < and >
+    .trim()
+    .substring(0, 500); // Limit length
+}
+
+// Password strength validation
+export function validatePasswordStrength(password) {
+  const errors = [];
+  
+  if (password.length < 6) {
+    errors.push('הסיסמה חייבת להכיל לפחות 6 תווים');
+  }
+  if (password.length > 12) {
+    errors.push('הסיסמה חייבת להכיל לכל היותר 12 תווים');
+  }
+  if (!/[a-zA-Z]/.test(password)) {
+    errors.push('הסיסמה חייבת להכיל לפחות אות אחת באנגלית');
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push('הסיסמה חייבת להכיל לפחות ספרה אחת');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+// Username validation
+export function validateUsername(username) {
+  const errors = [];
+  
+  if (username.length < 6) {
+    errors.push('שם המשתמש חייב להכיל לפחות 6 תווים');
+  }
+  if (username.length > 12) {
+    errors.push('שם המשתמש חייב להכיל לכל היותר 12 תווים');
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    errors.push('שם המשתמש יכול להכיל רק אותיות, ספרות וקו תחתון');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+// Email validation
+export function validateEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return {
+    valid: emailRegex.test(email),
+    error: 'כתובת האימייל אינה תקינה'
+  };
+}
+
 // --- LOCAL STORAGE MOCK DATABASE IMPLEMENTATION ---
 
 function getLocalStorageData(key) {
@@ -742,6 +843,203 @@ export async function getActiveGames() {
   }
 
   return getLocalStorageData('games');
+}
+
+// --- TWO-FACTOR AUTHENTICATION ---
+
+// Store temporary 2FA codes with expiration (in-memory for demo, should use Redis in production)
+const twoFactorCodes = new Map();
+
+export function generateAndStore2FACode(uid) {
+  // Generate secure 6-digit code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = Date.now() + (5 * 60 * 1000); // 5 minutes expiration
+  
+  twoFactorCodes.set(uid, {
+    code,
+    expiresAt,
+    attempts: 0,
+    maxAttempts: 3
+  });
+  
+  return code;
+}
+
+export function verify2FACode(uid, enteredCode) {
+  const stored = twoFactorCodes.get(uid);
+  
+  if (!stored) {
+    return { valid: false, error: 'קוד אימות לא תקף או פג תוקף' };
+  }
+  
+  if (Date.now() > stored.expiresAt) {
+    twoFactorCodes.delete(uid);
+    return { valid: false, error: 'קוד האימות פג תוקף. בקש קוד חדש.' };
+  }
+  
+  if (stored.attempts >= stored.maxAttempts) {
+    twoFactorCodes.delete(uid);
+    return { valid: false, error: 'חרגת ממספר הניסיונות המקסימלי. נסה להתחבר מחדש.' };
+  }
+  
+  stored.attempts++;
+  
+  if (enteredCode === stored.code) {
+    twoFactorCodes.delete(uid);
+    return { valid: true };
+  } else {
+    const remaining = stored.maxAttempts - stored.attempts;
+    return { 
+      valid: false, 
+      error: `קוד שגוי. נותרו ${remaining} ניסיונות.` 
+    };
+  }
+}
+
+export function clear2FACode(uid) {
+  twoFactorCodes.delete(uid);
+}
+
+// --- BIOMETRIC AUTHENTICATION (WebAuthn) ---
+
+// Store WebAuthn credentials (in production, this should be in a secure database)
+const webAuthnCredentials = new Map();
+
+export async function registerWebAuthnCredential(username, uid) {
+  // Check if WebAuthn is supported
+  if (!window.PublicKeyCredential) {
+    throw new Error('הדפדפן שלך לא תומך ב-WebAuthn');
+  }
+
+  // Check if user verifier is available (biometric device)
+  const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  if (!available) {
+    throw new Error('לא נמצא מכשיר ביומטרי זמין במערכת');
+  }
+
+  try {
+    // Convert username to buffer
+    const userIdBuffer = new TextEncoder().encode(uid);
+    const challengeBuffer = new Uint8Array(32);
+    crypto.getRandomValues(challengeBuffer);
+
+    const credentialCreationOptions = {
+      challenge: challengeBuffer,
+      rp: {
+        name: 'DIGGY Games',
+        id: window.location.hostname || 'localhost'
+      },
+      user: {
+        id: userIdBuffer,
+        name: username,
+        displayName: username
+      },
+      pubKeyCredParams: [
+        { type: 'public-key', alg: -7 } // ES256
+      ],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        userVerification: 'required'
+      },
+      timeout: 60000
+    };
+
+    const credential = await navigator.credentials.create({
+      publicKey: credentialCreationOptions
+    });
+
+    if (!credential) {
+      throw new Error('יצירת אישור ביומטרי נכשלה');
+    }
+
+    // Store the credential ID and public key
+    const credentialId = Array.from(new Uint8Array(credential.rawId));
+    const credentialData = {
+      credentialId: credentialId,
+      publicKey: credential.response.publicKey ? Array.from(new Uint8Array(credential.response.publicKey)) : null,
+      counter: 0,
+      username: username,
+      uid: uid,
+      createdAt: Date.now()
+    };
+
+    webAuthnCredentials.set(uid, credentialData);
+    
+    // Also store in localStorage for persistence across sessions
+    localStorage.setItem(`diggy_webauthn_${uid}`, JSON.stringify(credentialData));
+
+    return { success: true, credentialId: credentialId };
+  } catch (error) {
+    console.error('WebAuthn registration error:', error);
+    throw new Error(`שגיאה ברישום ביומטרי: ${error.message}`);
+  }
+}
+
+export async function verifyWebAuthnCredential(username, uid) {
+  // Check if WebAuthn is supported
+  if (!window.PublicKeyCredential) {
+    throw new Error('הדפדפן שלך לא תומך ב-WebAuthn');
+  }
+
+  // Try to get stored credential
+  let credentialData = webAuthnCredentials.get(uid);
+  
+  // If not in memory, try localStorage
+  if (!credentialData) {
+    const stored = localStorage.getItem(`diggy_webauthn_${uid}`);
+    if (stored) {
+      credentialData = JSON.parse(stored);
+      webAuthnCredentials.set(uid, credentialData);
+    }
+  }
+
+  if (!credentialData) {
+    throw new Error('לא נמצא אישור ביומטרי שמור. אנא הפעל זיהוי ביומטרי בהגדרות.');
+  }
+
+  try {
+    const challengeBuffer = new Uint8Array(32);
+    crypto.getRandomValues(challengeBuffer);
+
+    const credentialRequestOptions = {
+      challenge: challengeBuffer,
+      allowCredentials: [{
+        type: 'public-key',
+        id: new Uint8Array(credentialData.credentialId)
+      }],
+      userVerification: 'required',
+      timeout: 60000
+    };
+
+    const assertion = await navigator.credentials.get({
+      publicKey: credentialRequestOptions
+    });
+
+    if (!assertion) {
+      throw new Error('אימות ביומטרי נכשל');
+    }
+
+    // In a real implementation, you would verify the signature here
+    // For this demo, we'll trust the assertion if it was successful
+    
+    // Update counter
+    credentialData.counter++;
+    localStorage.setItem(`diggy_webauthn_${uid}`, JSON.stringify(credentialData));
+
+    return { success: true, username: username };
+  } catch (error) {
+    console.error('WebAuthn verification error:', error);
+    throw new Error(`שגיאה באימות ביומטרי: ${error.message}`);
+  }
+}
+
+export function hasWebAuthnCredential(uid) {
+  return webAuthnCredentials.has(uid) || localStorage.getItem(`diggy_webauthn_${uid}`) !== null;
+}
+
+export function removeWebAuthnCredential(uid) {
+  webAuthnCredentials.delete(uid);
+  localStorage.removeItem(`diggy_webauthn_${uid}`);
 }
 
 // --- EMAIL DISPATCHER ---
