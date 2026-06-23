@@ -262,6 +262,13 @@ async function handleRouting() {
     return;
   }
 
+  if (hash.startsWith('#/articles/')) {
+    const slug = hash.split('#/articles/')[1];
+    await renderArticleDetail(slug);
+    updateActiveSidebarNav('#/articles');
+    return;
+  }
+
   const renderer = routes[hash] || renderHome;
   updateActiveSidebarNav(hash);
   await renderer();
@@ -290,6 +297,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   setupInboxWidget();
   setupSidebarNavigation();
+  setupFooterNavigation();
 
   // Listen to Auth state (Firebase or LocalStorage fallback)
   onAuthStateListener(async (user) => {
@@ -322,6 +330,10 @@ function setupSidebarNavigation() {
     <div class="nav-item" id="home-nav-btn" data-route="#/">
       <i class="fas fa-home"></i>
       <span>מסך הבית</span>
+    </div>
+    <div class="nav-item" id="articles-nav-btn" data-route="#/articles">
+      <i class="fas fa-newspaper"></i>
+      <span>מאמרים וחדשות</span>
     </div>
   `;
 
@@ -395,6 +407,13 @@ function setupSidebarNavigation() {
     navigateTo('#/');
   });
 
+  const articlesNav = document.getElementById('articles-nav-btn');
+  if (articlesNav) {
+    articlesNav.addEventListener('click', () => {
+      navigateTo('#/articles');
+    });
+  }
+
   // Category filters
   navMenu.querySelectorAll('[data-category]').forEach(item => {
     item.addEventListener('click', () => {
@@ -440,6 +459,134 @@ function setupSidebarNavigation() {
     adminNav.addEventListener('click', () => {
       navigateTo('#/admin');
     });
+  }
+}
+
+function setupFooterNavigation() {
+  const footerLinks = {
+    'footer-sitemap-btn': '#/sitemap',
+    'footer-terms-btn': '#/terms',
+    'footer-privacy-btn': '#/privacy',
+    'footer-contact-btn': '#/contact',
+    'footer-rights-btn': '#/contact',
+    'footer-articles-btn': '#/articles'
+  };
+
+  Object.entries(footerLinks).forEach(([id, route]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigateTo(route);
+    });
+  });
+}
+
+function ensureContentPageStyles() {
+  if (!document.getElementById('content-page-inline-styles')) {
+    const styleTag = document.createElement('style');
+    styleTag.id = 'content-page-inline-styles';
+    styleTag.textContent = `
+      .doc-article-title {
+        font-size: 24px;
+        color: var(--accent-color);
+        margin-bottom: 20px;
+        font-family: var(--font-display);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        padding-bottom: 15px;
+      }
+      .doc-section { margin-bottom: 25px; }
+      .doc-section h3 {
+        font-size: 18px;
+        color: #fff;
+        margin-bottom: 10px;
+        font-family: var(--font-display);
+      }
+      .doc-section p {
+        color: var(--text-muted);
+        font-size: 14.5px;
+        margin-bottom: 12px;
+        line-height: 1.6;
+      }
+      .doc-section ul {
+        margin-right: 20px;
+        margin-bottom: 15px;
+        color: var(--text-muted);
+        font-size: 14px;
+        list-style-type: square;
+      }
+      .doc-section li { margin-bottom: 8px; }
+      .doc-badge {
+        background: var(--accent-dim);
+        color: var(--accent-color);
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        margin-right: 5px;
+      }
+      .article-card {
+        background: var(--bg-card);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px;
+        padding: 20px;
+        transition: var(--transition-smooth);
+        cursor: pointer;
+      }
+      .article-card:hover {
+        border-color: var(--accent-color);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,255,102,0.1);
+      }
+      .article-card-date {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+      }
+      .article-card-title {
+        font-size: 18px;
+        color: #fff;
+        margin-bottom: 10px;
+        font-family: var(--font-display);
+      }
+      .article-card-excerpt {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+      .legal-page-content {
+        background: var(--bg-card);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: var(--border-glow);
+      }
+      .sitemap-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .sitemap-group h3 {
+        font-size: 16px;
+        color: var(--accent-color);
+        margin-bottom: 12px;
+        font-family: var(--font-display);
+      }
+      .sitemap-group ul { list-style: none; margin: 0; padding: 0; }
+      .sitemap-group li { margin-bottom: 8px; }
+      .sitemap-group a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 14px;
+        transition: color 0.3s;
+      }
+      .sitemap-group a:hover { color: var(--accent-color); }
+    `;
+    document.head.appendChild(styleTag);
   }
 }
 
@@ -617,6 +764,7 @@ function createGameCardMarkup(game) {
   const isFav = state.user && state.user.favorites && state.user.favorites.includes(game.id);
   const heartClass = isFav ? 'active' : '';
   const heartIcon = isFav ? 'fas fa-heart' : 'far fa-heart';
+  const { rating, count } = getGameRatingInfo(game);
 
   return `
     <div class="game-card" data-id="${game.id}">
@@ -631,6 +779,7 @@ function createGameCardMarkup(game) {
         <div class="game-card-dev">
           <i class="fas fa-code-branch"></i> מפתח: ${game.developerName}
         </div>
+        ${renderStarsDisplay(rating, count, 'card-size')}
         <p class="game-card-desc">${game.description}</p>
         <div class="game-card-tags">
           ${game.categories.map(c => `<span class="game-tag">${c}</span>`).join('')}
@@ -1246,7 +1395,8 @@ function openGameStatsModal(req) {
   
   let seed = 0;
   for (let i = 0; i < req.id.length; i++) seed += req.id.charCodeAt(i);
-  const rating = (4.5 + (seed % 6) * 0.1).toFixed(1);
+  const ratingInfo = game ? getGameRatingInfo(game) : { display: (4.5 + (seed % 6) * 0.1).toFixed(1), count: 0 };
+  const rating = ratingInfo.display;
   
   const avgTime = (1.5 + (plays ? (plays % 3) * 0.4 : 0.8)).toFixed(1);
   const earnings = (plays * 0.15).toFixed(2);
@@ -1869,8 +2019,12 @@ async function renderGameDetails(gameId) {
         </div>
 
         <div class="game-meta-item">
-          <span class="game-meta-label">קוד מקור</span>
-          <a href="${game.githubUrl}" target="_blank" style="color: #0096ff; text-decoration: underline; font-size: 13px;">צפה ב-GitHub Repository</a>
+          <span class="game-meta-label">דירוג שחקנים</span>
+          <div id="game-rating-display"></div>
+        </div>
+
+        <div class="game-meta-item" id="game-rating-input-wrap">
+          <div id="game-rating-input"></div>
         </div>
 
         <hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.05);">
@@ -1916,9 +2070,9 @@ async function renderGameDetails(gameId) {
       }
     }
   });
-}
 
-// --- BUILT-IN RETRO GAME ENGINES (CANVAS) ---
+  setupGameRatingUI(gameId);
+}
 
 // 1. NEON SNAKE GAME
 function launchSnakeGame(canvas) {
