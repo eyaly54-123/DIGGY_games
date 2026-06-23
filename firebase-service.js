@@ -748,6 +748,10 @@ export async function getActiveGames() {
 
 export const simulatedEmails = [];
 
+// Resend API Configuration - Add your API key here or use environment variable
+const RESEND_API_KEY = 're_your_api_key_here'; // Replace with actual Resend API key
+const USE_REAL_EMAIL = false; // Set to true when API key is configured
+
 export async function sendEmailViaResend(to, subject, htmlContent) {
   const emailLog = {
     id: 'email_' + Math.random().toString(36).substr(2, 9),
@@ -758,11 +762,56 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
     timestamp: Date.now()
   };
   
+  // Try real Resend API if configured
+  if (USE_REAL_EMAIL && RESEND_API_KEY && RESEND_API_KEY !== 're_your_api_key_here') {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'DIGGY Games <noreply@diggy.com>',
+          to: [to],
+          subject: subject,
+          html: htmlContent
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        emailLog.status = 'sent';
+        emailLog.messageId = data.id;
+        console.log(`[Email Sent via Resend] to: ${to} | subject: ${subject} | id: ${data.id}`);
+      } else {
+        const error = await response.json();
+        console.error('[Resend API Error]', error);
+        emailLog.status = 'failed';
+        emailLog.error = error.message;
+        // Fallback to simulation
+        simulatedEmails.unshift(emailLog);
+        window.dispatchEvent(new CustomEvent('diggy-email-sent', { detail: emailLog }));
+        return { success: false, mode: 'api_failed', error: error.message, email: emailLog };
+      }
+    } catch (error) {
+      console.error('[Resend API Network Error]', error);
+      emailLog.status = 'failed';
+      emailLog.error = error.message;
+      // Fallback to simulation
+      simulatedEmails.unshift(emailLog);
+      window.dispatchEvent(new CustomEvent('diggy-email-sent', { detail: emailLog }));
+      return { success: false, mode: 'network_error', error: error.message, email: emailLog };
+    }
+  } else {
+    // Simulation mode
+    emailLog.status = 'simulated';
+    console.log(`[Email Simulated] to: ${to} | subject: ${subject}`);
+  }
+  
   simulatedEmails.unshift(emailLog);
   window.dispatchEvent(new CustomEvent('diggy-email-sent', { detail: emailLog }));
-
-  console.log(`[Email Dispatched] to: ${to} | subject: ${subject}`);
-  return { success: true, mode: 'simulated', email: emailLog };
+  return { success: true, mode: USE_REAL_EMAIL ? 'api' : 'simulated', email: emailLog };
 }
 
 async function sendStatusEmail(to, name, type, status, reason) {
