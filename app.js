@@ -174,6 +174,92 @@ window.addEventListener('DOMContentLoaded', async () => {
   await fetchGames();
 });
 
+// Setup sidebar navigation based on user role
+function setupSidebarNavigation() {
+  const navMenu = document.getElementById('sidebar-nav-menu');
+  if (!navMenu) return;
+
+  let navItems = `
+    <div class="nav-item" id="home-nav-btn" data-route="#/">
+      <i class="fas fa-home"></i>
+      <span>מסך הבית</span>
+    </div>
+  `;
+
+  // Add category navigation
+  navItems += `
+    <div class="nav-section-title">קטגוריות</div>
+    <div class="nav-item" data-category="RPG">
+      <i class="fas fa-dragon"></i>
+      <span>RPG</span>
+    </div>
+    <div class="nav-item" data-category="RETRO">
+      <i class="fas fa-gamepad"></i>
+      <span>RETRO</span>
+    </div>
+    <div class="nav-item" data-category="MULTIPLAYER">
+      <i class="fas fa-users"></i>
+      <span>MULTIPLAYER</span>
+    </div>
+  `;
+
+  // Add role-specific navigation
+  if (state.user) {
+    if (state.user.role === 'developer' || state.user.role === 'admin') {
+      navItems += `
+        <div class="nav-section-title">פיתוח</div>
+        <div class="nav-item" id="dev-nav-btn" data-route="#/dev">
+          <i class="fas fa-code"></i>
+          <span>פאנל מפתח</span>
+        </div>
+      `;
+    }
+
+    if (state.user.role === 'admin') {
+      navItems += `
+        <div class="nav-item" id="admin-nav-btn" data-route="#/admin">
+          <i class="fas fa-shield-alt"></i>
+          <span>ניהול מערכת</span>
+        </div>
+      `;
+    }
+  }
+
+  navMenu.innerHTML = navItems;
+
+  // Bind click events
+  document.getElementById('home-nav-btn').addEventListener('click', () => {
+    navigateTo('#/');
+  });
+
+  // Category filters
+  navMenu.querySelectorAll('[data-category]').forEach(item => {
+    item.addEventListener('click', () => {
+      const category = item.getAttribute('data-category');
+      navigateTo('#/');
+      setTimeout(() => {
+        const tab = document.querySelector(`[data-category="${category}"]`);
+        if (tab) tab.click();
+      }, 100);
+    });
+  });
+
+  // Role-specific navigation
+  const devNav = document.getElementById('dev-nav-btn');
+  if (devNav) {
+    devNav.addEventListener('click', () => {
+      navigateTo('#/dev');
+    });
+  }
+
+  const adminNav = document.getElementById('admin-nav-btn');
+  if (adminNav) {
+    adminNav.addEventListener('click', () => {
+      navigateTo('#/admin');
+    });
+  }
+}
+
 async function fetchGames() {
   try {
     const dbGames = await getActiveGames();
