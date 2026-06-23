@@ -96,6 +96,7 @@ const routes = {
   '#/': renderHome,
   '#/login': renderLogin,
   '#/dev': renderDev,
+  '#/dev-docs': renderDevDocs,
   '#/admin': renderAdmin,
   '#/settings': renderSettings,
   '#/game/:id': renderGameDetails
@@ -286,6 +287,13 @@ function setupSidebarNavigation() {
   if (devNav) {
     devNav.addEventListener('click', () => {
       navigateTo('#/dev');
+    });
+  }
+
+  const devDocsNav = document.getElementById('dev-docs-btn');
+  if (devDocsNav) {
+    devDocsNav.addEventListener('click', () => {
+      navigateTo('#/dev-docs');
     });
   }
 
@@ -984,6 +992,10 @@ function openGameSubmitModal(editData = null) {
         <input type="url" id="game-github" value="${editData ? editData.githubUrl : ''}" required placeholder="https://github.com/user/repo" ${editData && editData.status === 'rejected' ? 'disabled' : ''}>
       </div>
       <div class="form-group">
+        <label>קישור למשחק פעיל (Playable URL / GitHub Pages / iframe)</label>
+        <input type="url" id="game-url" value="${editData ? (editData.gameUrl || '') : ''}" required placeholder="https://username.github.io/my-game/">
+      </div>
+      <div class="form-group">
         <label>איך משחקים (מדריך מקוצר)</label>
         <textarea id="game-how" required placeholder="לדוגמה: לחץ על חצים לזוז, רווח לירות..." rows="2">${editData ? editData.howToPlay : ''}</textarea>
       </div>
@@ -1034,6 +1046,7 @@ function openGameSubmitModal(editData = null) {
       description: document.getElementById('game-desc').value,
       logoUrl: document.getElementById('game-logo').value,
       githubUrl: document.getElementById('game-github').value,
+      gameUrl: document.getElementById('game-url').value,
       howToPlay: document.getElementById('game-how').value,
       targetAudience: document.getElementById('game-audience').value,
       categories: categories,
@@ -1406,6 +1419,10 @@ function openAdminDirectUploadModal() {
         <input type="url" id="direct-github" required placeholder="https://github.com/... (אופציונלי)">
       </div>
       <div class="form-group">
+        <label>קישור למשחק פעיל (Playable URL / GitHub Pages / iframe)</label>
+        <input type="url" id="direct-url" required placeholder="https://username.github.io/my-game/">
+      </div>
+      <div class="form-group">
         <label>הוראות משחק</label>
         <textarea id="direct-how" required placeholder="איך משחקים..." rows="2"></textarea>
       </div>
@@ -1451,6 +1468,7 @@ function openAdminDirectUploadModal() {
       description: document.getElementById('direct-desc').value,
       logoUrl: document.getElementById('direct-logo').value,
       githubUrl: document.getElementById('direct-github').value,
+      gameUrl: document.getElementById('direct-url').value,
       howToPlay: document.getElementById('direct-how').value,
       targetAudience: document.getElementById('direct-audience').value,
       categories: categories,
@@ -1516,6 +1534,8 @@ async function renderGameDetails(gameId) {
           </div>
           <!-- Game Canvas -->
           <canvas id="retro-game-canvas" width="600" height="400" style="display: none;"></canvas>
+          <!-- Game IFrame (for custom uploaded games) -->
+          <iframe id="retro-game-iframe" style="display: none; width: 100%; height: 100%; min-height: 400px; border: 2px solid var(--accent-color); border-radius: 8px; background: #000; box-shadow: var(--border-glow);" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
         </div>
       </div>
 
@@ -1560,19 +1580,32 @@ async function renderGameDetails(gameId) {
   // Bind Start Game Button
   document.getElementById('start-game-btn').addEventListener('click', () => {
     document.getElementById('game-menu-overlay').style.display = 'none';
-    const canvas = document.getElementById('retro-game-canvas');
-    canvas.style.display = 'block';
     
-    // Launch game engine depending on id
-    if (game.id === 'preset_snake') {
-      state.gameInstance = launchSnakeGame(canvas);
-    } else if (game.id === 'preset_bricks') {
-      state.gameInstance = launchBricksGame(canvas);
-    } else if (game.id === 'preset_evader') {
-      state.gameInstance = launchEvaderGame(canvas);
+    if (game.gameUrl) {
+      const iframe = document.getElementById('retro-game-iframe');
+      iframe.src = game.gameUrl;
+      iframe.style.display = 'block';
+      state.gameInstance = {
+        stop: () => {
+          iframe.src = '';
+          iframe.style.display = 'none';
+        }
+      };
     } else {
-      // Fallback fallback engine
-      state.gameInstance = launchSnakeGame(canvas); // fallback to snake
+      const canvas = document.getElementById('retro-game-canvas');
+      canvas.style.display = 'block';
+      
+      // Launch game engine depending on id
+      if (game.id === 'preset_snake') {
+        state.gameInstance = launchSnakeGame(canvas);
+      } else if (game.id === 'preset_bricks') {
+        state.gameInstance = launchBricksGame(canvas);
+      } else if (game.id === 'preset_evader') {
+        state.gameInstance = launchEvaderGame(canvas);
+      } else {
+        // Fallback fallback engine
+        state.gameInstance = launchSnakeGame(canvas); // fallback to snake
+      }
     }
   });
 }
@@ -2540,5 +2573,268 @@ function openEmailViewer(email) {
   document.getElementById('email-view-back-btn').addEventListener('click', (e) => {
     e.preventDefault();
     viewer.remove();
+  });
+}
+
+// Render: DEVELOPER DOCUMENTATION
+async function renderDevDocs() {
+  const main = document.getElementById('main-container');
+
+  if (!state.user || (state.user.role !== 'developer' && state.user.role !== 'admin')) {
+    main.innerHTML = `
+      <div style="text-align: center; padding: 80px 0;">
+        <i class="fas fa-lock" style="font-size: 64px; color: var(--danger-color); margin-bottom: 20px;"></i>
+        <h2>גישה חסומה!</h2>
+        <p style="color: var(--text-muted); margin-top: 10px;">דף זה מיועד למפתחים מורשים בלבד.</p>
+        <button class="btn btn-primary" onclick="window.location.hash='#/'" style="margin-top: 20px;">חזור למסך הבית</button>
+      </div>
+    `;
+    return;
+  }
+
+  // Scoped documentation CSS
+  if (!document.getElementById('dev-docs-inline-styles')) {
+    const styleTag = document.createElement('style');
+    styleTag.id = 'dev-docs-inline-styles';
+    styleTag.textContent = `
+      .doc-tab-btn {
+        font-family: var(--font-display);
+        font-size: 14px;
+        text-align: right;
+        background: none;
+        border: none;
+        padding: 12px 15px;
+        color: var(--text-muted);
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s;
+      }
+      .doc-tab-btn:hover {
+        background: rgba(255, 255, 255, 0.02) !important;
+        color: var(--accent-color) !important;
+      }
+      .doc-tab-btn.active-doc-tab {
+        background: var(--accent-dim) !important;
+        color: var(--accent-color) !important;
+        border-right: 3px solid var(--accent-color);
+        font-weight: bold;
+      }
+      .doc-article-title {
+        font-size: 24px;
+        color: var(--accent-color);
+        margin-bottom: 20px;
+        font-family: var(--font-display);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        padding-bottom: 15px;
+      }
+      .doc-section {
+        margin-bottom: 25px;
+      }
+      .doc-section h3 {
+        font-size: 18px;
+        color: #fff;
+        margin-bottom: 10px;
+        font-family: var(--font-display);
+      }
+      .doc-section p {
+        color: var(--text-muted);
+        font-size: 14.5px;
+        margin-bottom: 12px;
+        line-height: 1.6;
+      }
+      .doc-section ul {
+        margin-right: 20px;
+        margin-bottom: 15px;
+        color: var(--text-muted);
+        font-size: 14px;
+        list-style-type: square;
+      }
+      .doc-section li {
+        margin-bottom: 8px;
+      }
+      .doc-code-block {
+        background: #090c12;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 15px;
+        font-family: monospace;
+        font-size: 13px;
+        color: #70d6ff;
+        direction: ltr;
+        text-align: left;
+        overflow-x: auto;
+        margin: 15px 0;
+      }
+      .doc-badge {
+        background: var(--accent-dim);
+        color: var(--accent-color);
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        margin-right: 5px;
+      }
+    `;
+    document.head.appendChild(styleTag);
+  }
+
+  main.innerHTML = `
+    <div class="top-header">
+      <div class="page-title-wrap">
+        <h1>מדריכים ותיעוד מפתחים</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">כל מה שצריך לדעת כדי לבנות ולהצליח עם משחקים ב-DIGGY</p>
+      </div>
+    </div>
+    
+    <div class="dev-docs-container" style="display: flex; gap: 30px; margin-top: 20px; align-items: flex-start;">
+      <!-- Sidebar navigation for docs -->
+      <div class="dev-docs-sidebar" style="width: 250px; background: var(--bg-card); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 15px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; box-shadow: var(--border-glow);">
+        <button class="doc-tab-btn active-doc-tab" data-doc="getting-started"><i class="fas fa-rocket"></i> כיצד זה עובד?</button>
+        <button class="doc-tab-btn" data-doc="standards"><i class="fas fa-list-check"></i> סטנדרטים ודרישות</button>
+        <button class="doc-tab-btn" data-doc="monetization"><i class="fas fa-coins"></i> תגמולים ורווחים</button>
+        <button class="doc-tab-btn" data-doc="tips"><i class="fas fa-trophy"></i> איך להצליח?</button>
+      </div>
+      
+      <!-- Doc Content Display area -->
+      <div class="dev-docs-content" id="doc-content-area" style="flex-grow: 1; background: var(--bg-card); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 30px; min-height: 400px; box-shadow: var(--border-glow);">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+  `;
+
+  const docArticles = {
+    'getting-started': `
+      <h2 class="doc-article-title"><i class="fas fa-rocket"></i> כיצד עובדת מערכת העלאת המשחקים ב-DIGGY?</h2>
+      <div class="doc-section">
+        <p>פלטפורמת <strong>DIGGY</strong> מיועדת להביא משחקי רטרו, ארקייד וקז'ואל איכותיים ומרהיבים לילדים. המערכת מבוססת על הרצה פנימית של משחקי Web מבוססי HTML5/JS בתוך חלונות משחק (iframes) מאובטחים. מפתחים יכולים לבנות ולהגיש משחקים בקלות רבה.</p>
+      </div>
+      <div class="doc-section">
+        <h3>השלבים להגשת משחק מוצלח באתר:</h3>
+        <ul>
+          <li><strong>בניית המשחק (Development):</strong> צור משחק קז'ואל אינטראקטיבי שרץ בדפדפן (HTML/JS/CSS). ניתן להשתמש בכל מנוע שתומך בייצוא ל-Web (כמו Unity, Godot, PixiJS, Phaser או Vanilla JS Canvas).</li>
+          <li><strong>אירוח המשחק (Hosting):</strong> העלה את המשחק שלך לאוויר כדי שיהיה זמין בדפדפן. אנו ממליצים להשתמש ב-<strong>GitHub Pages</strong> שהוא שירות חינמי, יציב ומעולה לטעינת משחקים.</li>
+          <li><strong>הגשת הבקשה (Submission):</strong> היכנס ללוח המפתח שלך ב-DIGGY, לחץ על "הגש משחק חדש", והזן את קישור המשחק הפעיל (Playable URL) ואת קישור קוד המקור ב-GitHub.</li>
+          <li><strong>בדיקה ואישור (Admin Approval):</strong> מנהלי המערכת יבחנו את המשחק כדי לוודא תקינות. לאחר אישורו, המשחק יפורסם אוטומטית באתר ויופיע לכל השחקנים!</li>
+        </ul>
+      </div>
+      <div class="doc-section">
+        <h3>דוגמה למבנה בסיסי של קובץ HTML ראשי למשחק:</h3>
+        <div class="doc-code-block">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;My Diggy Game&lt;/title&gt;
+  &lt;style&gt;
+    body { margin: 0; background: #000; overflow: hidden; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;canvas id="gameCanvas"&gt;&lt;/canvas&gt;
+  &lt;script src="game.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</div>
+      </div>
+    `,
+    'standards': `
+      <h2 class="doc-article-title"><i class="fas fa-list-check"></i> סטנדרטים ודרישות טכנולוגיות</h2>
+      <div class="doc-section">
+        <p>כדי לשמור על איכות גבוהה, רמת אבטחה מעולה וחווית משתמש רציפה עבור השחקנים שלנו, כל משחק המוגש לאתר DIGGY נדרש לעמוד בסטנדרטים הבאים:</p>
+      </div>
+      <div class="doc-section">
+        <h3>1. עיצוב רספונסיבי והתאמה למסך</h3>
+        <p>מכיוון שהמשחקים נטענים בתוך מסגרת משחק קבועה בדף, על המשחק שלך להתאים את עצמו בצורה חלקה לכל גודל חלון (מומלץ להשתמש ב-100% רוחב וגובה של ה-viewport או לתמוך ביחס גובה-רוחב גמיש).</p>
+      </div>
+      <div class="doc-section">
+        <h3>2. קוד מקור פתוח (GitHub Repository)</h3>
+        <p>אנו מאמינים בשיתוף ידע ולמידה הדדית. מפתחים נדרשים לשתף את קוד המקור של המשחק שלהם ב-GitHub. קישור זה יוצג לצד המשחק ויאפשר לילדים אחרים ללמוד כיצד בניתם את המשחק.</p>
+      </div>
+      <div class="doc-section">
+        <h3>3. שמירה על סביבה בטוחה לילדים</h3>
+        <ul>
+          <li><strong>ללא פרסומות:</strong> חל איסור מוחלט לשלב פרסומות קופצות, מודעות וידאו או קישורים חיצוניים לרכישה.</li>
+          <li><strong>ללא תוכן פוגעני:</strong> המשחקים צריכים להיות מותאמים לילדים בכל הגילאים, ללא תכנים אלימים או פוגעניים.</li>
+          <li><strong>ללא איסוף מידע אישי:</strong> אין לבקש מהמשתמשים להזין פרטים אישיים, סיסמאות או אימיילים בתוך המשחק.</li>
+        </ul>
+      </div>
+      <div class="doc-section">
+        <h3>4. שימוש במקלדת, עכבר ומגע</h3>
+        <p>ודא שהמשחק תומך במקשים סטנדרטיים (מקשי החצים, WASD, רווח) ועובד בצורה חלקה גם במכשירים ניידים אם ציינת שהמשחק מיועד גם להם.</p>
+      </div>
+    `,
+    'monetization': `
+      <h2 class="doc-article-title"><i class="fas fa-coins"></i> מערכת תגמולים ורווחים למפתחים</h2>
+      <div class="doc-section">
+        <p>ב-DIGGY אנו מעריכים את העבודה הקשה של המפתחים ומציעים מערכת תגמולים דינמית שמאפשרת לכם להרוויח על בסיס הפופולריות והאיכות של המשחקים שלכם!</p>
+      </div>
+      <div class="doc-section">
+        <h3>איך עובד התגמול במערכת?</h3>
+        <ul>
+          <li><strong>תגמול על כמות כניסות (Play Milestone Bonus):</strong>
+            <p>על כל שחקן רשום שמשחק במשחק שלך לפחות דקה אחת, המערכת מתגמלת אותך בנקודות מפתח (Developer Points) הניתנות להמרה לפרסים או למענקים כספיים.</p>
+          </li>
+          <li><strong>בונוס דירוג כוכבים (Star Rating multiplier):</strong>
+            <p>משחקים המדורגים בדירוג ממוצע גבוה על ידי הקהילה (למשל, 4.5 כוכבים ומעלה) זוכים להכפלת התגמול היומי שלהם ולחשיפה מוגברת בעמוד הבית.</p>
+          </li>
+          <li><strong>אתגרי ותחרויות מפתחים (Monthly Hackathons):</strong>
+            <p>בכל חודש אנו מכריזים על תחרות פיתוח סביב נושא מסוים (למשל "משחקי חלל ניאון"). משחקים שמגיעים לשלושת המקומות הראשונים זוכים בפרסים כספיים יקרי ערך ובתגים מיוחדים לפרופיל המפתח שלהם.</p>
+          </li>
+          <li><strong>תגמול קוד פתוח מוביל (Open Source Contribution):</strong>
+            <p>קוד מקור שזוכה להכי הרבה כוכבים (Stars) ב-GitHub ומתוחזק היטב על ידי המפתח, מקבל מענק עידוד חודשי מטעם צוות DIGGY לפיתוח חינוכי.</p>
+          </li>
+        </ul>
+      </div>
+    `,
+    'tips': `
+      <h2 class="doc-article-title"><i class="fas fa-trophy"></i> טיפים ועצות ליצירת משחק מנצח</h2>
+      <div class="doc-section">
+        <p>רוצה שהמשחק שלך יגיע לראש טבלת הפופולריות ושכולם ישחקו בו? הנה כמה טיפים מנצחים מצוות העיצוב והפיתוח של DIGGY:</p>
+      </div>
+      <div class="doc-section">
+        <h3>1. התאם לאסתטיקה של האתר - ניאון שחור וגלאסמורפיזם</h3>
+        <p>המשתמשים של DIGGY רגילים לעיצוב יוקרתי, זוהר ומודרני. משחקים המשתמשים ברקעים כהים בשילוב אלמנטים זוהרים בצבעי ניאון (ירוק זוהר, ורוד פוקסיה, כחול חשמלי) ירגישו מחוברים בצורה טבעית לאתר ויקבלו יותר כניסות.</p>
+      </div>
+      <div class="doc-section">
+        <h3>2. טעינה מהירה ומעבר מיידי למשחק (Instant Fun)</h3>
+        <p>לילדים יש סבלנות קצרה. הימנע ממסכי טעינה ארוכים, סרטוני פתיחה מורכבים או הגדרות מסובכות. הבא את השחקן ישירות למסך הראשי עם כפתור "שחק עכשיו" בולט.</p>
+      </div>
+      <div class="doc-section">
+        <h3>3. שילוב מוזיקת רטרו (8-bit) ואפקטים קוליים</h3>
+        <p>סאונד יוצר 50% מהחוויה! מוזיקת רקע קופצנית בסגנון רטרו ואפקטים קוליים עבור קפיצה, פסילה, ולקיחת נקודות יהפכו את המשחק לממכר במיוחד. *טיפ: אל תשכח להוסיף כפתור השתקה (Mute).*</p>
+      </div>
+      <div class="doc-section">
+        <h3>4. מכניקה פשוטה אך מאתגרת (Easy to Learn, Hard to Master)</h3>
+        <p>המשחקים הטובים ביותר הם כאלה שניתן להבין בשתי שניות (למשל: סנייק או שובר לבנים) אך קשה מאוד להגיע בהם לניקוד גבוה. זה יוצר אתגר שמעודד את השחקנים לנסות שוב ושוב.</p>
+      </div>
+    `
+  };
+
+  // Render article content helper
+  function displayArticle(docKey) {
+    const area = document.getElementById('doc-content-area');
+    area.innerHTML = docArticles[docKey] || '';
+  }
+
+  // Initial render of first article
+  displayArticle('getting-started');
+
+  // Bind tab buttons click handler
+  const docBtns = document.querySelectorAll('.doc-tab-btn');
+  docBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Toggle active states
+      docBtns.forEach(b => b.classList.remove('active-doc-tab'));
+      btn.classList.add('active-doc-tab');
+      
+      // Load content
+      const docKey = btn.getAttribute('data-doc');
+      displayArticle(docKey);
+    });
   });
 }
