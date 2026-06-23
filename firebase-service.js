@@ -718,52 +718,91 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
 
     if (status === 'approved') {
       const games = getLocalStorageData('games');
-      const gamePayload = {
-        id: 'game_' + Math.random().toString(36).substr(2, 9),
-        name: requestData.name,
-        description: requestData.description,
-        logoUrl: requestData.logoUrl,
-        githubUrl: requestData.githubUrl,
-        gameUrl: requestData.gameUrl || '',
-        howToPlay: requestData.howToPlay,
-        targetAudience: requestData.targetAudience,
-        categories: requestData.categories,
-        developerUid: requestData.developerUid,
-        developerName: requestData.developerName,
-        approved: true,
-        createdAt: new Date().toISOString()
-      };
       
-      games.push(gamePayload);
-      saveLocalStorageData('games', games);
+      if (requestData.type === 'version_update') {
+        const gameIdx = games.findIndex(g => g.id === requestData.parentGameId);
+        if (gameIdx !== -1) {
+          games[gameIdx].gameUrl = requestData.gameUrl;
+          games[gameIdx].githubUrl = requestData.githubUrl;
+          games[gameIdx].version = requestData.version;
+          games[gameIdx].latestChangelog = requestData.changelog;
+          saveLocalStorageData('games', games);
+        }
+      } else {
+        const gameId = 'game_' + Math.random().toString(36).substr(2, 9);
+        const gamePayload = {
+          id: gameId,
+          name: requestData.name,
+          description: requestData.description,
+          logoUrl: requestData.logoUrl,
+          githubUrl: requestData.githubUrl,
+          gameUrl: requestData.gameUrl || '',
+          howToPlay: requestData.howToPlay,
+          targetAudience: requestData.targetAudience,
+          categories: requestData.categories,
+          developerUid: requestData.developerUid,
+          developerName: requestData.developerName,
+          approved: true,
+          plays: 0,
+          createdAt: new Date().toISOString()
+        };
+        
+        games.push(gamePayload);
+        saveLocalStorageData('games', games);
+
+        requests[idx].gameId = gameId;
+        saveLocalStorageData('game_requests', requests);
+      }
     }
   }
 
   if (firebaseLoaded && !fallbackMode && requestData) {
     try {
       const ref = firebaseFirestore.collection(db, "game_requests");
-      const q = firebaseFirestore.query(ref, firebaseFirestore.where("githubUrl", "==", requestData.githubUrl));
+      const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", requestId));
       const snap = await firebaseFirestore.getDocs(q);
       if (!snap.empty) {
         const docId = snap.docs[0].id;
-        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "game_requests", docId), { status, adminSuggestions });
+        
+        let updatePayload = { status, adminSuggestions };
         
         if (status === 'approved') {
-          await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "games"), {
-            name: requestData.name,
-            description: requestData.description,
-            logoUrl: requestData.logoUrl,
-            githubUrl: requestData.githubUrl,
-            gameUrl: requestData.gameUrl || '',
-            howToPlay: requestData.howToPlay,
-            targetAudience: requestData.targetAudience,
-            categories: requestData.categories,
-            developerUid: requestData.developerUid,
-            developerName: requestData.developerName,
-            approved: true,
-            createdAt: new Date().toISOString()
-          });
+          if (requestData.type === 'version_update') {
+            const gameRef = firebaseFirestore.collection(db, "games");
+            const qGame = firebaseFirestore.query(gameRef, firebaseFirestore.where("id", "==", requestData.parentGameId));
+            const gameSnap = await firebaseFirestore.getDocs(qGame);
+            if (!gameSnap.empty) {
+              const gameDocId = gameSnap.docs[0].id;
+              await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", gameDocId), {
+                gameUrl: requestData.gameUrl,
+                githubUrl: requestData.githubUrl,
+                version: requestData.version,
+                latestChangelog: requestData.changelog
+              });
+            }
+          } else {
+            const newGameId = 'game_' + Math.random().toString(36).substr(2, 9);
+            await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "games"), {
+              id: newGameId,
+              name: requestData.name,
+              description: requestData.description,
+              logoUrl: requestData.logoUrl,
+              githubUrl: requestData.githubUrl,
+              gameUrl: requestData.gameUrl || '',
+              howToPlay: requestData.howToPlay,
+              targetAudience: requestData.targetAudience,
+              categories: requestData.categories,
+              developerUid: requestData.developerUid,
+              developerName: requestData.developerName,
+              approved: true,
+              plays: 0,
+              createdAt: new Date().toISOString()
+            });
+            updatePayload.gameId = newGameId;
+          }
         }
+        
+        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "game_requests", docId), updatePayload);
       }
     } catch (e) {
       console.warn("Firebase game request handling error, completed locally:", e);
@@ -1168,4 +1207,67 @@ async function sendStatusEmail(to, name, type, status, reason) {
 
   await sendEmailViaResend(to, `DIGGY - עדכון בקשת ${type}`, html);
 }
+
+export async function recordGamePlay(gameId) {
+  // Update LocalStorage
+  const games = getLocalStorageData('games');
+  const idx = games.findIndex(g => g.id === gameId);
+  if (idx !== -1) {
+    games[idx].plays = (games[idx].plays || 0) + 1;
+    saveLocalStorageData('games', games);
+  }
+
+  // Update Firebase
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const ref = firebaseFirestore.collection(db, "games");
+      const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
+      const snap = await firebaseFirestore.getDocs(q);
+      if (!snap.empty) {
+        const docId = snap.docs[0].id;
+        const currentPlays = snap.docs[0].data().plays || 0;
+        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", docId), {
+          plays: currentPlays + 1
+        });
+      } else {
+        const docRef = firebaseFirestore.doc(db, "games", gameId);
+        const docSnap = await firebaseFirestore.getDoc(docRef);
+        if (docSnap.exists()) {
+          const currentPlays = docSnap.data().plays || 0;
+          await firebaseFirestore.updateDoc(docRef, { plays: currentPlays + 1 });
+        }
+      }
+    } catch (e) {
+      console.warn("Firebase record gameplay failed:", e);
+    }
+  }
+}
+
+export async function submitGameVersionRequest(gameId, versionData) {
+  const requestId = 'greq_' + Math.random().toString(36).substr(2, 9);
+  const requestDoc = {
+    id: requestId,
+    parentGameId: gameId,
+    type: 'version_update',
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    adminSuggestions: "",
+    ...versionData
+  };
+
+  const requests = getLocalStorageData('game_requests');
+  requests.push(requestDoc);
+  saveLocalStorageData('game_requests', requests);
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "game_requests"), requestDoc);
+    } catch (e) {
+      console.warn("Firebase game version request failed, saved locally:", e);
+    }
+  }
+
+  return requestDoc;
+}
+
 export { auth };

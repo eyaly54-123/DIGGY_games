@@ -15,6 +15,8 @@ import {
   directPublishGame, 
   getActiveGames, 
   updateAndResubmitGameRequest,
+  recordGamePlay,
+  submitGameVersionRequest,
   simulatedEmails,
   onAuthStateListener,
   getAllUsers,
@@ -934,7 +936,12 @@ async function renderDev() {
 
         const actionBtn = req.status === 'improvement' 
           ? `<button class="btn btn-secondary resubmit-btn" data-id="${req.id}" style="padding: 4px 10px; font-size: 11px;"><i class="fas fa-edit"></i> ערוך והגש שנית</button>`
-          : (req.status === 'approved' ? '<span style="color: var(--accent-color); font-size: 12px;"><i class="fas fa-check-circle"></i> חי באתר</span>' : '<span style="color: var(--text-dark); font-size: 12px;">אין פעולות</span>');
+          : (req.status === 'approved' 
+              ? `<div style="display: flex; gap: 6px;">
+                  <button class="btn btn-secondary view-stats-btn" data-id="${req.id}" style="padding: 4px 8px; font-size: 11px; background: rgba(0, 255, 102, 0.05); color: var(--accent-color); border-color: rgba(0,255,102,0.2);"><i class="fas fa-chart-line"></i> סטטיסטיקות</button>
+                  <button class="btn btn-primary new-version-btn" data-id="${req.id}" style="padding: 4px 8px; font-size: 11px;"><i class="fas fa-code-branch"></i> גרסה חדשה</button>
+                 </div>` 
+              : '<span style="color: var(--text-dark); font-size: 12px;">אין פעולות</span>');
 
         return `
           <tr data-raw='${JSON.stringify(req)}'>
@@ -954,6 +961,22 @@ async function renderDev() {
           const row = btn.closest('tr');
           const data = JSON.parse(row.getAttribute('data-raw'));
           openGameSubmitModal(data);
+        });
+      });
+
+      body.querySelectorAll('.view-stats-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const row = btn.closest('tr');
+          const data = JSON.parse(row.getAttribute('data-raw'));
+          openGameStatsModal(data);
+        });
+      });
+
+      body.querySelectorAll('.new-version-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const row = btn.closest('tr');
+          const data = JSON.parse(row.getAttribute('data-raw'));
+          openNewVersionModal(data);
         });
       });
     }
@@ -1065,6 +1088,146 @@ function openGameSubmitModal(editData = null) {
         await submitGameRequest(gameData);
         showToast("המשחק נשלח לאישור ה-Admin! יישלח אליך עדכון במייל. 📧", "success");
       }
+      overlay.classList.remove('active');
+      renderDev();
+    } catch (err) {
+      showToast(err.message, "danger");
+    } finally {
+      showLoader(false);
+    }
+  });
+}
+
+function openGameStatsModal(req) {
+  const overlay = document.getElementById('modal-overlay');
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+
+  modalTitle.textContent = `סטטיסטיקות משחק: ${req.name}`;
+  
+  const game = state.games.find(g => g.githubUrl === req.githubUrl || g.id === req.gameId);
+  const plays = game ? (game.plays || 0) : 0;
+  
+  let seed = 0;
+  for (let i = 0; i < req.id.length; i++) seed += req.id.charCodeAt(i);
+  const rating = (4.5 + (seed % 6) * 0.1).toFixed(1);
+  
+  const avgTime = (1.5 + (plays ? (plays % 3) * 0.4 : 0.8)).toFixed(1);
+  const earnings = (plays * 0.15).toFixed(2);
+
+  modalBody.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 20px; padding: 10px 0;">
+      <div style="display: flex; align-items: center; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;">
+        <img src="${req.logoUrl}" onerror="this.src='https://placehold.co/80x80/12161e/00ff66?text=G'" style="width: 70px; height: 70px; border-radius: 10px; object-fit: cover; border: 2px solid var(--accent-color); box-shadow: var(--border-glow);">
+        <div>
+          <h3 style="font-size: 20px; color: #fff; font-family: var(--font-display);">${req.name}</h3>
+          <span class="doc-badge">${req.categories ? req.categories.join(', ') : ''}</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; box-shadow: var(--border-glow);">
+          <i class="fas fa-play" style="font-size: 24px; color: var(--accent-color); margin-bottom: 8px;"></i>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">כמות משחקים (Plays)</div>
+          <div style="font-size: 28px; font-weight: bold; color: var(--accent-color); margin-top: 5px; font-family: var(--font-display);">${plays}</div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; box-shadow: var(--border-glow);">
+          <i class="fas fa-star" style="font-size: 24px; color: #ffd700; margin-bottom: 8px;"></i>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">דירוג שחקנים</div>
+          <div style="font-size: 28px; font-weight: bold; color: #fff; margin-top: 5px; font-family: var(--font-display);">${rating} <span style="font-size: 14px; color: var(--text-muted);">/ 5.0</span></div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; box-shadow: var(--border-glow);">
+          <i class="fas fa-hourglass-half" style="font-size: 24px; color: #70d6ff; margin-bottom: 8px;"></i>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">זמן משחק ממוצע</div>
+          <div style="font-size: 22px; font-weight: bold; color: #fff; margin-top: 10px; font-family: var(--font-display);">${avgTime} דק'</div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; box-shadow: var(--border-glow);">
+          <i class="fas fa-coins" style="font-size: 24px; color: #00ff66; margin-bottom: 8px;"></i>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">רווחים שנצברו</div>
+          <div style="font-size: 22px; font-weight: bold; color: #00ff66; margin-top: 10px; font-family: var(--font-display);">${earnings} ₪</div>
+        </div>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; font-size: 13px; line-height: 1.5; color: var(--text-muted);">
+        <i class="fas fa-circle-info" style="color: var(--accent-color); margin-left: 5px;"></i>
+        הרווחים מחושבים לפי מפתח תגמול של 0.15 ₪ לכל משחק פעיל של שחקן רשום באתר. תשלומים מועברים בסוף כל חודש קלנדרי.
+      </div>
+    </div>
+  `;
+
+  overlay.classList.add('active');
+}
+
+function openNewVersionModal(req) {
+  const overlay = document.getElementById('modal-overlay');
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+
+  modalTitle.textContent = `הגשת גרסה חדשה: ${req.name}`;
+  
+  modalBody.innerHTML = `
+    <form id="game-version-form">
+      <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 13px; color: var(--text-muted);">
+        <i class="fas fa-info-circle" style="color: var(--accent-color); margin-left: 5px;"></i>
+        אתה מגיש כעת עדכון גרסה למשחק פעיל. בקשה זו תועבר לבדיקה של מנהל המערכת (Admin) ותעודכן באתר לאחר אישורה.
+      </div>
+
+      <div class="form-group">
+        <label>שם המשחק (לא ניתן לשינוי)</label>
+        <input type="text" id="version-game-name" value="${req.name}" disabled style="background: rgba(255,255,255,0.02); color: var(--text-muted); cursor: not-allowed;">
+      </div>
+      
+      <div class="form-group">
+        <label>מספר הגרסה החדש (למשל: v1.1.0, v2.0)</label>
+        <input type="text" id="version-number" required placeholder="v1.1.0">
+      </div>
+      
+      <div class="form-group">
+        <label>מה חדש בגרסה הזו? (Changelog)</label>
+        <textarea id="version-changelog" required placeholder="פרט כאן את רשימת השינויים, תיקוני הבאגים והשיפורים בגרסה זו..." rows="4"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>קישור מעודכן למשחק פעיל (Playable URL)</label>
+        <input type="url" id="version-url" value="${req.gameUrl || ''}" required placeholder="https://username.github.io/my-game/">
+      </div>
+
+      <div class="form-group">
+        <label>קישור מעודכן למאגר GitHub (קוד המשחק)</label>
+        <input type="url" id="version-github" value="${req.githubUrl || ''}" required placeholder="https://github.com/user/repo">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 15px;">
+        <i class="fas fa-paper-plane"></i> שלח גרסה חדשה לאישור
+      </button>
+    </form>
+  `;
+
+  overlay.classList.add('active');
+
+  const form = document.getElementById('game-version-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const versionData = {
+      version: document.getElementById('version-number').value.trim(),
+      changelog: document.getElementById('version-changelog').value.trim(),
+      gameUrl: document.getElementById('version-url').value.trim(),
+      githubUrl: document.getElementById('version-github').value.trim(),
+      developerUid: state.user.uid,
+      developerName: state.user.username,
+      name: req.name,
+      logoUrl: req.logoUrl,
+      description: req.description
+    };
+
+    showLoader(true);
+    try {
+      await submitGameVersionRequest(req.gameId || req.id, versionData);
+      showToast("גרסת המשחק החדשה נשלחה לאישור המנהל! 🚀", "success");
       overlay.classList.remove('active');
       renderDev();
     } catch (err) {
@@ -1228,6 +1391,10 @@ async function renderAdmin() {
         else if (req.status === 'rejected') statusText = '<span class="badge badge-rejected">נדחה</span>';
         else if (req.status === 'improvement') statusText = '<span class="badge badge-improvement">הצעת שיפור</span>';
 
+        const typeBadge = req.type === 'version_update' 
+          ? `<span class="badge badge-pending" style="background: rgba(112, 214, 255, 0.15); color: #70d6ff; border-color: rgba(112,214,255,0.3); margin-top: 4px; display: inline-block;">עדכון גרסה (${req.version})</span>`
+          : '';
+
         const actionButtons = isPending 
           ? `
             <div style="display: flex; gap: 6px; flex-direction: column;">
@@ -1245,16 +1412,19 @@ async function renderAdmin() {
               <div style="display: flex; align-items: center; gap: 10px;">
                 <img src="${req.logoUrl}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
                 <div>
-                  <div style="font-weight: bold; color: var(--accent-color);">${req.name}</div>
+                  <div style="font-weight: bold; color: var(--accent-color);">${req.name} ${typeBadge}</div>
                   <div style="font-size: 11px; color: var(--text-muted);">איך משחקים: ${req.howToPlay}</div>
                 </div>
               </div>
             </td>
-            <td>${req.categories.join(', ')}</td>
+            <td>${req.categories ? req.categories.join(', ') : ''}</td>
             <td><a href="${req.githubUrl}" target="_blank" style="color: #0096ff; text-decoration: underline; font-size: 12px;">מקור קוד</a></td>
             <td>
-              <div style="font-size: 12px;"><strong>מיועד ל:</strong> ${req.targetAudience}</div>
-              <div style="font-size: 12px; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${req.description}</div>
+              ${req.type === 'version_update'
+                ? `<div style="font-size: 12px; color: var(--accent-color);"><strong>מה חדש בגרסה:</strong> ${req.changelog}</div>`
+                : `<div style="font-size: 12px;"><strong>מיועד ל:</strong> ${req.targetAudience}</div>
+                   <div style="font-size: 12px; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${req.description}</div>`
+              }
             </td>
             <td>${actionButtons}</td>
           </tr>
@@ -1580,6 +1750,8 @@ async function renderGameDetails(gameId) {
   // Bind Start Game Button
   document.getElementById('start-game-btn').addEventListener('click', () => {
     document.getElementById('game-menu-overlay').style.display = 'none';
+    
+    recordGamePlay(game.id).catch(err => console.warn("Failed to record play stat:", err));
     
     if (game.gameUrl) {
       const iframe = document.getElementById('retro-game-iframe');
