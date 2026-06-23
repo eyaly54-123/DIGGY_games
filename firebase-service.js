@@ -591,9 +591,15 @@ export async function getDeveloperRequests() {
 }
 
 export async function handleDeveloperRequest(requestId, status, adminReason) {
+  console.log("handleDeveloperRequest called with:", { requestId, status, adminReason });
+  
   // Update locally
   const requests = getLocalStorageData('developer_requests');
+  console.log("Current requests:", requests);
+  
   const idx = requests.findIndex(r => r.id === requestId || r.uid === requestId); // fallback matching
+  console.log("Found request at index:", idx);
+  
   let requestData = null;
 
   if (idx !== -1) {
@@ -605,6 +611,9 @@ export async function handleDeveloperRequest(requestId, status, adminReason) {
     if (status === 'approved') {
       await updateUserProfile(requests[idx].uid, { role: 'developer' });
     }
+  } else {
+    console.error("Request not found with id:", requestId);
+    throw new Error("Request not found - could not locate developer request with ID: " + requestId);
   }
 
   if (firebaseLoaded && !fallbackMode && requestData) {
