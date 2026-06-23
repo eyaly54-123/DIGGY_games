@@ -744,6 +744,9 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
           developerName: requestData.developerName,
           approved: true,
           plays: 0,
+          ratingSum: 0,
+          ratingCount: 0,
+          rating: 5.0,
           createdAt: new Date().toISOString()
         };
         
@@ -796,6 +799,9 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
               developerName: requestData.developerName,
               approved: true,
               plays: 0,
+              ratingSum: 0,
+              ratingCount: 0,
+              rating: 5.0,
               createdAt: new Date().toISOString()
             });
             updatePayload.gameId = newGameId;
@@ -1268,6 +1274,50 @@ export async function submitGameVersionRequest(gameId, versionData) {
   }
 
   return requestDoc;
+}
+
+export async function rateGame(gameId, score) {
+  const games = getLocalStorageData('games');
+  const idx = games.findIndex(g => g.id === gameId);
+  let newRating = 5.0;
+  if (idx !== -1) {
+    const currentSum = games[idx].ratingSum || 0;
+    const currentCount = games[idx].ratingCount || 0;
+    const nextSum = currentSum + score;
+    const nextCount = currentCount + 1;
+    newRating = parseFloat((nextSum / nextCount).toFixed(1));
+    
+    games[idx].ratingSum = nextSum;
+    games[idx].ratingCount = nextCount;
+    games[idx].rating = newRating;
+    saveLocalStorageData('games', games);
+  }
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const ref = firebaseFirestore.collection(db, "games");
+      const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
+      const snap = await firebaseFirestore.getDocs(q);
+      if (!snap.empty) {
+        const docId = snap.docs[0].id;
+        const data = snap.docs[0].data();
+        const currentSum = data.ratingSum || 0;
+        const currentCount = data.ratingCount || 0;
+        const nextSum = currentSum + score;
+        const nextCount = currentCount + 1;
+        const avg = parseFloat((nextSum / nextCount).toFixed(1));
+        
+        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", docId), {
+          ratingSum: nextSum,
+          ratingCount: nextCount,
+          rating: avg
+        });
+      }
+    } catch (e) {
+      console.warn("Firebase rate game failed:", e);
+    }
+  }
+  return newRating;
 }
 
 export { auth };

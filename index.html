@@ -41,7 +41,24 @@
     </aside>
 
     <!-- Main Content Display -->
-    <main class="main-content" id="main-container"></main>
+    <main class="main-content">
+      <div id="main-container" style="flex-grow: 1;"></div>
+      <!-- Footer -->
+      <footer id="app-footer" style="border-top: 1px solid rgba(255,255,255,0.05); padding: 20px 0; margin-top: 50px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-muted); flex-shrink: 0; font-family: var(--font-display); direction: rtl;">
+        <div>
+          <span>© 2026 DIGGY Arena. כל הזכויות שמורות.</span>
+        </div>
+        <div style="display: flex; gap: 15px;">
+          <a href="#" id="footer-sitemap-btn" style="color: var(--text-muted); text-decoration: none; transition: color 0.3s; cursor: pointer;">מפת האתר</a>
+          <span>•</span>
+          <a href="#" id="footer-terms-btn" style="color: var(--text-muted); text-decoration: none; transition: color 0.3s; cursor: pointer;">תנאי שימוש</a>
+          <span>•</span>
+          <a href="#" id="footer-privacy-btn" style="color: var(--text-muted); text-decoration: none; transition: color 0.3s; cursor: pointer;">מדיניות פרטיות</a>
+          <span>•</span>
+          <a href="#" id="footer-contact-btn" style="color: var(--text-muted); text-decoration: none; transition: color 0.3s; cursor: pointer;">צור קשר</a>
+        </div>
+      </footer>
+    </main>
 
   </div>
 
