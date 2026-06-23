@@ -1102,9 +1102,29 @@ export function removeWebAuthnCredential(uid) {
 
 export const simulatedEmails = [];
 
-// Resend API Configuration - Add your API key here or use environment variable
-const RESEND_API_KEY = 're_your_api_key_here'; // Replace with actual Resend API key
-const USE_REAL_EMAIL = false; // Set to true when API key is configured
+function getResendSettings() {
+  const globalScope = typeof window !== 'undefined' ? window : null;
+  const apiKey = (localStorage.getItem('diggy_resend_api_key') || globalScope?.__DIGGY_RESEND_API_KEY__ || '').trim();
+  const fromAddress = (localStorage.getItem('diggy_resend_from') || globalScope?.__DIGGY_RESEND_FROM__ || 'DIGGY Games <noreply@diggy.com>').trim();
+
+  return {
+    apiKey,
+    from: fromAddress || 'DIGGY Games <noreply@diggy.com>',
+    enabled: Boolean(apiKey && apiKey !== 're_your_api_key_here')
+  };
+}
+
+export function setResendConfig(apiKey, fromAddress) {
+  const normalizedKey = (apiKey || '').trim();
+  const normalizedFrom = (fromAddress || '').trim();
+  localStorage.setItem('diggy_resend_api_key', normalizedKey);
+  localStorage.setItem('diggy_resend_from', normalizedFrom || 'DIGGY Games <noreply@diggy.com>');
+  return getResendSettings();
+}
+
+export function getResendConfigState() {
+  return getResendSettings();
+}
 
 export async function sendEmailViaResend(to, subject, htmlContent) {
   const emailLog = {
@@ -1116,17 +1136,19 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
     timestamp: Date.now()
   };
   
+  const resendSettings = getResendSettings();
+
   // Try real Resend API if configured
-  if (USE_REAL_EMAIL && RESEND_API_KEY && RESEND_API_KEY !== 're_your_api_key_here') {
+  if (resendSettings.enabled) {
     try {
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Authorization': `Bearer ${resendSettings.apiKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: 'DIGGY Games <noreply@diggy.com>',
+          from: resendSettings.from,
           to: [to],
           subject: subject,
           html: htmlContent
@@ -1165,7 +1187,7 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
   
   simulatedEmails.unshift(emailLog);
   window.dispatchEvent(new CustomEvent('diggy-email-sent', { detail: emailLog }));
-  return { success: true, mode: USE_REAL_EMAIL ? 'api' : 'simulated', email: emailLog };
+  return { success: true, mode: resendSettings.enabled ? 'api' : 'simulated', email: emailLog };
 }
 
 async function sendStatusEmail(to, name, type, status, reason) {

@@ -35,7 +35,10 @@ import {
   sanitizeInput,
   validatePasswordStrength,
   validateUsername,
-  validateEmail
+  validateEmail,
+  sendEmailViaResend,
+  setResendConfig,
+  getResendConfigState
 } from './firebase-service.js';
 
 // --- PLATFORM STATE ---
@@ -48,7 +51,8 @@ let state = {
   promoTimer: null,
   currentGame: null,
   gameInstance: null,
-  recentEmails: []
+  recentEmails: [],
+  supportActiveThreadId: null
 };
 
 // --- DEFAULT GAMES PRE-POPULATION ---
@@ -146,6 +150,140 @@ function getUserRatingForGame(gameId) {
   const store = getUserRatingsStore();
   const userKey = state.user?.uid || 'guest';
   return store[userKey]?.[gameId] || null;
+}
+
+function getSupportThreads() {
+  try {
+    return JSON.parse(localStorage.getItem('diggy_support_threads') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveSupportThreads(threads) {
+  localStorage.setItem('diggy_support_threads', JSON.stringify(threads));
+}
+
+function createSupportThread({ name, email, subject, message }) {
+  const thread = {
+    id: 'support_' + Math.random().toString(36).slice(2, 10),
+    name,
+    email,
+    subject,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    messages: [{
+      id: 'msg_' + Math.random().toString(36).slice(2, 10),
+      sender: 'user',
+      author: name,
+      text: message,
+      createdAt: new Date().toISOString()
+    }]
+  };
+
+  const threads = getSupportThreads();
+  threads.unshift(thread);
+  saveSupportThreads(threads);
+  return thread;
+}
+
+function addSupportReply(threadId, sender, author, message) {
+  const threads = getSupportThreads();
+  const thread = threads.find(t => t.id === threadId);
+  if (!thread) return null;
+
+  thread.messages.push({
+    id: 'msg_' + Math.random().toString(36).slice(2, 10),
+    sender,
+    author,
+    text: message,
+    createdAt: new Date().toISOString()
+  });
+  thread.updatedAt = new Date().toISOString();
+  saveSupportThreads(threads);
+  return thread;
+}
+
+function renderAdminSupportChat(selectedThreadId = null) {
+  const listEl = document.getElementById('admin-support-thread-list');
+  const contentEl = document.getElementById('admin-support-thread-content');
+  if (!listEl || !contentEl) return;
+
+  const threads = getSupportThreads().sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+  const effectiveThreadId = selectedThreadId || state.supportActiveThreadId || threads[0]?.id || null;
+  state.supportActiveThreadId = effectiveThreadId;
+
+  if (threads.length === 0) {
+    listEl.innerHTML = '<div class="support-chat-empty">אין פניות פתוחות כרגע.</div>';
+    contentEl.innerHTML = '<div class="support-chat-empty">לא נבחרה פנייה.</div>';
+    return;
+  }
+
+  listEl.innerHTML = threads.map(thread => {
+    const lastMsg = thread.messages[thread.messages.length - 1];
+    const isActive = thread.id === effectiveThreadId;
+    return `
+      <button class="support-thread-card ${isActive ? 'active' : ''}" data-thread-id="${thread.id}">
+        <div class="support-thread-title">${thread.subject}</div>
+        <div class="support-thread-meta">${thread.name} · ${thread.email}</div>
+        <div class="support-thread-preview">${lastMsg ? lastMsg.text : 'ללא הודעות'}</div>
+      </button>
+    `;
+  }).join('');
+
+  listEl.querySelectorAll('.support-thread-card').forEach(btn => {
+    btn.addEventListener('click', () => {
+      renderAdminSupportChat(btn.getAttribute('data-thread-id'));
+    });
+  });
+
+  const activeThread = threads.find(thread => thread.id === effectiveThreadId) || threads[0];
+  const messagesHtml = activeThread.messages.map(message => `
+    <div class="support-message ${message.sender === 'admin' ? 'admin' : ''}">
+      <div class="support-message-author">${message.author}</div>
+      <div class="support-message-text">${message.text}</div>
+      <div class="support-message-time">${new Date(message.createdAt).toLocaleString()}</div>
+    </div>
+  `).join('');
+
+  contentEl.innerHTML = `
+    <div class="support-thread-header">
+      <div>
+        <div class="support-thread-title">${activeThread.subject}</div>
+        <div class="support-thread-meta">${activeThread.name} · ${activeThread.email}</div>
+      </div>
+      <div class="support-thread-meta">נוצר: ${new Date(activeThread.createdAt).toLocaleString()}</div>
+    </div>
+    <div class="support-thread-messages">${messagesHtml}</div>
+    <form id="support-reply-form" class="support-reply-form">
+      <textarea id="support-reply-input" rows="3" placeholder="הקלד תגובה לאדם שנותן תמיכה..."></textarea>
+      <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i> שלח</button>
+    </form>
+  `;
+
+  const form = document.getElementById('support-reply-form');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('support-reply-input');
+      const message = input.value.trim();
+      if (!message) return;
+
+      addSupportReply(activeThread.id, 'admin', state.user?.username || 'Admin', message);
+      const customerEmail = activeThread.email;
+      const html = `
+        <div style="font-family: sans-serif; background: #07080a; color: white; padding: 24px; border-radius: 12px; border: 1px solid #00ff66;">
+          <h2 style="color: #00ff66;">תגובה חדשה מהצוות של DIGGY</h2>
+          <p>היי ${activeThread.name},</p>
+          <p>${message}</p>
+          <p>לשאלות נוספות, ניתן להשיב ישירות לאימייל זה.</p>
+        </div>
+      `;
+      await sendEmailViaResend(customerEmail, `DIGGY - תגובה חדשה לתמיכה`, html);
+      showToast('התגובה נשלחה למשתמש!', 'success');
+      renderAdminSupportChat(activeThread.id);
+    });
+  }
 }
 
 function setupGameRatingUI(gameId) {
@@ -1589,6 +1727,32 @@ async function renderAdmin() {
       </table>
     </div>
 
+    <!-- Support Chat Section -->
+    <div class="section-title">צ'אט תמיכה / Admin Inbox</div>
+    <div class="support-chat-shell">
+      <div class="support-chat-list" id="admin-support-thread-list"></div>
+      <div class="support-chat-content" id="admin-support-thread-content"></div>
+    </div>
+
+    <!-- Resend Configuration Section -->
+    <div class="section-title">הגדרות Resend ואימיילים</div>
+    <div class="data-table-container" style="padding: 20px;">
+      <div class="form-group">
+        <label>מפתח Resend API</label>
+        <input type="password" id="resend-api-key" value="${getResendConfigState().apiKey || ''}" placeholder="re_...">
+      </div>
+      <div class="form-group">
+        <label>כתובת שולח (Sender)</label>
+        <input type="text" id="resend-from" value="${getResendConfigState().from || 'DIGGY Games <noreply@diggy.com>'}" placeholder="DIGGY Games <noreply@yourdomain.com>">
+      </div>
+      <div class="form-group">
+        <label>כתובת תמיכה לאדמין</label>
+        <input type="email" id="support-admin-email" value="${localStorage.getItem('diggy_support_admin_email') || 'support@diggy-arena.com'}" placeholder="support@yourdomain.com">
+      </div>
+      <button class="btn btn-primary" id="save-resend-config-btn" style="margin-top: 10px;"><i class="fas fa-save"></i> שמור הגדרות Resend</button>
+      <p style="margin-top: 10px; color: var(--text-muted); font-size: 13px;">ההגדרות נשמרות ב-localStorage של הדפדפן. לשימוש אמיתי יש להגדיר דומיין מאומת ב-Resend ולשמור מפתח API תקין.</p>
+    </div>
+
     <!-- Users Management Section -->
     <div class="section-title">ניהול משתמשים ודרגות (חשבונות רשומים)</div>
     <div class="data-table-container">
@@ -1610,10 +1774,26 @@ async function renderAdmin() {
     </div>
   `;
 
+  renderAdminSupportChat(state.supportActiveThreadId);
+
   // Bind direct upload
   document.getElementById('admin-direct-upload-btn').addEventListener('click', () => {
     openAdminDirectUploadModal();
   });
+
+  const saveResendBtn = document.getElementById('save-resend-config-btn');
+  if (saveResendBtn) {
+    saveResendBtn.addEventListener('click', () => {
+      const apiKey = document.getElementById('resend-api-key').value;
+      const fromAddress = document.getElementById('resend-from').value;
+      const adminEmail = document.getElementById('support-admin-email').value;
+      setResendConfig(apiKey, fromAddress);
+      if (adminEmail) {
+        localStorage.setItem('diggy_support_admin_email', adminEmail);
+      }
+      showToast('הגדרות Resend נשמרו.', 'success');
+    });
+  }
 
   // Pull applications to become developers
   try {
@@ -3336,6 +3516,19 @@ async function renderContact() {
         <h3><i class="fas fa-envelope" style="color: var(--accent-color);"></i> יצירת קשר כללית</h3>
         <p>לשאלות, הצעות ותמיכה: <strong>support@diggy-arena.com</strong></p>
       </div>
+
+      <div class="doc-section" style="background: rgba(0,255,102,0.06); border: 1px solid rgba(0,255,102,0.16); border-radius: 12px; padding: 20px;">
+        <h3><i class="fas fa-headset" style="color: var(--accent-color);"></i> שלח פנייה לתמיכה</h3>
+        <p>הפנייה נרשמת בצ'אט פנימי של האדמין ונשלחת גם באימייל אם Resend מוגדר.</p>
+        <form id="support-request-form" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+          <input type="text" id="support-name" placeholder="שם מלא" required>
+          <input type="email" id="support-email" placeholder="your@email.com" required>
+          <input type="text" id="support-subject" placeholder="נושא הפנייה" required>
+          <textarea id="support-message" rows="4" placeholder="תאר את הבעיה או השאלה שלך..." required></textarea>
+          <button type="submit" class="btn btn-primary" style="width: fit-content; justify-content: center;"><i class="fas fa-paper-plane"></i> שלח פנייה</button>
+        </form>
+      </div>
+
       <div class="doc-section" style="background: rgba(255,200,0,0.05); border: 1px solid rgba(255,200,0,0.15); border-radius: 12px; padding: 20px;">
         <h3><i class="fas fa-copyright" style="color: #ffd700;"></i> בעלי זכויות יוצרים (DMCA)</h3>
         <p>אם אתם בעלי זכויות ומזהים תוכן המפר את זכויותיכם באתר שלנו, אנא שלחו אלינו:</p>
@@ -3357,6 +3550,52 @@ async function renderContact() {
       </div>
     </div>
   `;
+
+  const form = document.getElementById('support-request-form');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('support-name').value.trim();
+      const email = document.getElementById('support-email').value.trim();
+      const subject = document.getElementById('support-subject').value.trim();
+      const message = document.getElementById('support-message').value.trim();
+
+      if (!name || !email || !subject || !message) {
+        showToast('אנא מלא את כל השדות.', 'warning');
+        return;
+      }
+
+      showLoader(true);
+      try {
+        const thread = createSupportThread({ name, email, subject, message });
+        const adminEmail = localStorage.getItem('diggy_support_admin_email') || 'support@diggy-arena.com';
+        const adminHtml = `
+          <div style="font-family: sans-serif; background: #07080a; color: white; padding: 24px; border-radius: 12px; border: 1px solid #00ff66;">
+            <h2 style="color: #00ff66;">פנייה חדשה לתמיכה - DIGGY</h2>
+            <p><strong>שם:</strong> ${name}</p>
+            <p><strong>אימייל:</strong> ${email}</p>
+            <p><strong>נושא:</strong> ${subject}</p>
+            <p><strong>הודעה:</strong> ${message}</p>
+          </div>
+        `;
+        const userHtml = `
+          <div style="font-family: sans-serif; background: #07080a; color: white; padding: 24px; border-radius: 12px; border: 1px solid #00ff66;">
+            <h2 style="color: #00ff66;">קיבלנו את הפנייה שלך</h2>
+            <p>היי ${name},</p>
+            <p>הפנייה שלך נרשמה בצ'אט התמיכה של האדמין. נעדכן אותך בהקדם האפשרי.</p>
+          </div>
+        `;
+        await sendEmailViaResend(adminEmail, `DIGGY Support: ${subject}`, adminHtml);
+        await sendEmailViaResend(email, 'DIGGY - קיבלנו את הפנייה שלך', userHtml);
+        showToast('הפנייה נשלחה בהצלחה! אנחנו נענה בקרוב.', 'success');
+        form.reset();
+      } catch (err) {
+        showToast(err.message || 'שגיאה בשליחת הפנייה', 'danger');
+      } finally {
+        showLoader(false);
+      }
+    });
+  }
 }
 
 // Render: DEVELOPER DOCUMENTATION

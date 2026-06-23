@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Custom Neon Theme Stylesheet -->
-  <script type="module" crossorigin src="/assets/index-Dz9wXXfu.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CX5y86Ot.css">
+  <script type="module" crossorigin src="/assets/index-B5hyeSmA.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-C-vDfhwC.css">
 </head>
 <body>
 
@@ -42,7 +42,41 @@
     </aside>
 
     <!-- Main Content Display -->
-    <main class="main-content" id="main-container"></main>
+    <main class="main-content">
+      <div id="main-container" style="flex-grow: 1;"></div>
+      <!-- Footer -->
+      <footer id="app-footer" class="site-footer">
+        <div class="footer-grid">
+          <div class="footer-col footer-brand">
+            <div class="footer-logo">DIGGY Arena</div>
+            <p class="footer-desc">פלטפורמת משחקים בטוחה לילדים ונוער. משחקי ארקייד, רטרו וקז'ואל — ללא פרסומות.</p>
+            <p class="footer-copyright">© 2026 DIGGY Arena Ltd. כל הזכויות שמורות.</p>
+          </div>
+          <div class="footer-col">
+            <h4 class="footer-heading">ניווט באתר</h4>
+            <ul class="footer-links">
+              <li><a href="#" id="footer-sitemap-btn">מפת האתר</a></li>
+              <li><a href="#" id="footer-articles-btn">מאמרים וחדשות</a></li>
+              <li><a href="#/">קטלוג משחקים</a></li>
+              <li><a href="#/login">הרשמה / כניסה</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4 class="footer-heading">מידע משפטי</h4>
+            <ul class="footer-links">
+              <li><a href="#" id="footer-terms-btn">תנאי שימוש</a></li>
+              <li><a href="#" id="footer-privacy-btn">מדיניות פרטיות</a></li>
+              <li><a href="#" id="footer-contact-btn">צור קשר</a></li>
+            </ul>
+          </div>
+          <div class="footer-col footer-rights">
+            <h4 class="footer-heading"><i class="fas fa-copyright"></i> בעלי זכויות</h4>
+            <p class="footer-rights-text">מזהים תוכן המפר זכויות יוצרים? שלחו דיווח ונטפל תוך 48 שעות.</p>
+            <a href="#" id="footer-rights-btn" class="footer-rights-link">דיווח על הפרת זכויות ←</a>
+          </div>
+        </div>
+      </footer>
+    </main>
 
   </div>
 
@@ -76,9 +110,7 @@
   <!-- Path-to-Hash Interceptor for URL simulation -->
   <script>
     (function() {
-      // Intercept path names to direct to standard SPA hash routing
       const path = window.location.pathname.toLowerCase();
-      // Match path variants like /admin, /dev, /login, /settings, /game/id
       if (path.includes('/admin')) {
         window.location.hash = '#/admin';
       } else if (path.includes('/dev')) {
@@ -87,6 +119,16 @@
         window.location.hash = '#/login';
       } else if (path.includes('/settings')) {
         window.location.hash = '#/settings';
+      } else if (path.includes('/articles')) {
+        window.location.hash = '#/articles';
+      } else if (path.includes('/sitemap')) {
+        window.location.hash = '#/sitemap';
+      } else if (path.includes('/terms')) {
+        window.location.hash = '#/terms';
+      } else if (path.includes('/privacy')) {
+        window.location.hash = '#/privacy';
+      } else if (path.includes('/contact')) {
+        window.location.hash = '#/contact';
       } else if (path.includes('/game/')) {
         const parts = path.split('/game/');
         const id = parts[parts.length - 1];
