@@ -189,6 +189,10 @@ function setupSidebarNavigation() {
   // Add category navigation
   navItems += `
     <div class="nav-section-title">קטגוריות</div>
+    <div class="nav-item" data-category="ALL">
+      <i class="fas fa-th-large"></i>
+      <span>הכל</span>
+    </div>
     <div class="nav-item" data-category="RPG">
       <i class="fas fa-dragon"></i>
       <span>RPG</span>
@@ -200,6 +204,22 @@ function setupSidebarNavigation() {
     <div class="nav-item" data-category="MULTIPLAYER">
       <i class="fas fa-users"></i>
       <span>MULTIPLAYER</span>
+    </div>
+    <div class="nav-item" data-category="ACTION">
+      <i class="fas fa-bolt"></i>
+      <span>ACTION</span>
+    </div>
+    <div class="nav-item" data-category="PUZZLE">
+      <i class="fas fa-puzzle-piece"></i>
+      <span>PUZZLE</span>
+    </div>
+    <div class="nav-item" data-category="ADVENTURE">
+      <i class="fas fa-compass"></i>
+      <span>ADVENTURE</span>
+    </div>
+    <div class="nav-item" data-category="SPORTS">
+      <i class="fas fa-futbol"></i>
+      <span>SPORTS</span>
     </div>
   `;
 
@@ -237,10 +257,23 @@ function setupSidebarNavigation() {
     item.addEventListener('click', () => {
       const category = item.getAttribute('data-category');
       navigateTo('#/');
+      // Wait for home to render, then filter
       setTimeout(() => {
-        const tab = document.querySelector(`[data-category="${category}"]`);
-        if (tab) tab.click();
-      }, 100);
+        renderGamesGrid(category);
+        // Update active state on main content tabs
+        const mainTabs = document.querySelectorAll('.category-tabs button');
+        mainTabs.forEach(tab => {
+          if (tab.getAttribute('data-category') === category) {
+            tab.classList.add('active-cat');
+            tab.style.borderColor = 'var(--accent-color)';
+            tab.style.background = 'var(--accent-dim)';
+          } else {
+            tab.classList.remove('active-cat');
+            tab.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+            tab.style.background = 'transparent';
+          }
+        });
+      }, 150);
     });
   });
 
@@ -406,9 +439,16 @@ function renderGamesGrid(categoryFilter) {
   const grid = document.getElementById('home-games-grid');
   if (!grid) return;
 
+  console.log("renderGamesGrid called with category:", categoryFilter);
+  console.log("Total games:", state.games.length);
+  console.log("Games with categories:", state.games.filter(g => g.categories && g.categories.length > 0).length);
+
   const filtered = categoryFilter === 'ALL' 
     ? state.games 
     : state.games.filter(g => g.categories && g.categories.includes(categoryFilter));
+
+  console.log("Filtered games count:", filtered.length);
+  console.log("Filtered games:", filtered.map(g => ({ name: g.name, categories: g.categories })));
 
   if (filtered.length === 0) {
     grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">אין משחקים בקטגוריה זו כרגע.</div>`;
