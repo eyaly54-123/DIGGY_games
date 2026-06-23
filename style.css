@@ -1037,3 +1037,36 @@ h1, h2, h3, h4, h5, h6 {
     width: 100%;
   }
 }
+
+/* Settings Card Layout */
+.settings-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 25px;
+  flex: 1;
+  min-width: 320px;
+  transition: var(--transition-smooth);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-card:hover {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.settings-card-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+.settings-card-title {
+  font-size: 18px;
+  font-family: var(--font-display);
+  color: var(--accent-color);
+  text-shadow: 0 0 8px var(--accent-glow);
+}
+

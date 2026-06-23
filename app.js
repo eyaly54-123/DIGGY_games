@@ -16,7 +16,9 @@ import {
   getActiveGames, 
   updateAndResubmitGameRequest,
   simulatedEmails,
-  onAuthStateListener
+  onAuthStateListener,
+  getAllUsers,
+  changeUserRole
 } from './firebase-service.js';
 
 // --- PLATFORM STATE ---
@@ -959,6 +961,26 @@ async function renderAdmin() {
         </tbody>
       </table>
     </div>
+
+    <!-- Users Management Section -->
+    <div class="section-title">ניהול משתמשים ודרגות (חשבונות רשומים)</div>
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>שם משתמש</th>
+            <th>מזהה ייחודי (UID)</th>
+            <th>אימייל במערכת</th>
+            <th>דרגה / תפקיד (ROLE)</th>
+            <th>2FA / ביומטרי</th>
+            <th>תאריך רישום</th>
+          </tr>
+        </thead>
+        <tbody id="admin-users-list-body">
+          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">טוען רשימת משתמשים...</td></tr>
+        </tbody>
+      </table>
+    </div>
   `;
 
   // Bind direct upload
@@ -1074,7 +1096,72 @@ async function renderAdmin() {
   } catch (err) {
     console.error("Error loading games queue:", err);
   }
+
+  // Pull all registered users data
+  try {
+    const allUsers = await getAllUsers();
+    const usersBody = document.getElementById('admin-users-list-body');
+    
+    if (allUsers.length === 0) {
+      usersBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">לא נמצאו חשבונות רשומים.</td></tr>`;
+    } else {
+      usersBody.innerHTML = allUsers.map(u => {
+        const registrationDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'לא ידוע';
+        const twoFaBadge = u.twoFactorEnabled ? '<span style="color: var(--accent-color); font-size: 11px;"><i class="fas fa-check-circle"></i> פעיל</span>' : '<span style="color: var(--text-dark); font-size: 11px;">כבוי</span>';
+        const bioBadge = u.biometricsEnabled ? '<span style="color: var(--accent-color); font-size: 11px;"><i class="fas fa-check-circle"></i> פעיל</span>' : '<span style="color: var(--text-dark); font-size: 11px;">כבוי</span>';
+
+        return `
+          <tr>
+            <td><strong>${u.username}</strong></td>
+            <td style="font-family: monospace; font-size: 11px; color: var(--text-muted);">${u.uid}</td>
+            <td>${u.email}</td>
+            <td>
+              <select class="admin-role-select" data-uid="${u.uid}" style="background: var(--bg-darker); border-color: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-family: var(--font-display); color: var(--accent-color);">
+                <option value="player" ${u.role === 'player' ? 'selected' : ''}>PLAYER</option>
+                <option value="developer" ${u.role === 'developer' ? 'selected' : ''}>DEVELOPER</option>
+                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>ADMIN</option>
+              </select>
+            </td>
+            <td>
+              <div style="display: flex; gap: 10px;">
+                <span>2FA: ${twoFaBadge}</span>
+                <span>Bio: ${bioBadge}</span>
+              </div>
+            </td>
+            <td>${registrationDate}</td>
+          </tr>
+        `;
+      }).join('');
+
+      // Bind role change selectors
+      usersBody.querySelectorAll('.admin-role-select').forEach(select => {
+        select.addEventListener('change', async () => {
+          const uid = select.getAttribute('data-uid');
+          const newRole = select.value;
+          
+          showLoader(true);
+          try {
+            await changeUserRole(uid, newRole);
+            showToast(`דרגת המשתמש עודכנה ל-${newRole.toUpperCase()} בהצלחה!`, "success");
+            // If the user modified their own role, update state
+            if (state.user && state.user.uid === uid) {
+              state.user.role = newRole;
+              renderUserBadge();
+            }
+            renderAdmin(); // Refresh dashboard
+          } catch (e) {
+            showToast("עדכון הדרגה נכשל: " + e.message, "danger");
+          } finally {
+            showLoader(false);
+          }
+        });
+      });
+    }
+  } catch (err) {
+    console.error("Error loading users list:", err);
+  }
 }
+
 
 // Modal asking Admin to write reason/feedback for developer status or game requests
 function openAdminReasonModal(requestId, status, type) {
@@ -1809,9 +1896,9 @@ export function renderSettings() {
 
     <div style="display: flex; gap: 30px; flex-wrap: wrap;">
       <!-- Profile settings card -->
-      <div class="modal-container" style="flex: 1; min-width: 320px; max-width: 500px;">
-        <div class="modal-header">
-          <h2 class="modal-title">פרטי פרופיל</h2>
+      <div class="settings-card" style="flex: 1; min-width: 320px; max-width: 500px;">
+        <div class="settings-card-header">
+          <h2 class="settings-card-title">פרטי פרופיל</h2>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -1836,9 +1923,9 @@ export function renderSettings() {
       </div>
 
       <!-- Security / Auth card -->
-      <div class="modal-container" style="flex: 1; min-width: 320px; max-width: 500px;">
-        <div class="modal-header">
-          <h2 class="modal-title">אבטחה וסיסמאות</h2>
+      <div class="settings-card" style="flex: 1; min-width: 320px; max-width: 500px;">
+        <div class="settings-card-header">
+          <h2 class="settings-card-title">אבטחה וסיסמאות</h2>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -1886,9 +1973,9 @@ export function renderSettings() {
       </div>
 
       <!-- Display Theme Personalization -->
-      <div class="modal-container" style="flex: 1; min-width: 320px; max-width: 100%;">
-        <div class="modal-header">
-          <h2 class="modal-title">התאמת תצוגה</h2>
+      <div class="settings-card" style="flex: 1; min-width: 320px; max-width: 100%;">
+        <div class="settings-card-header">
+          <h2 class="settings-card-title">התאמת תצוגה</h2>
         </div>
         <div class="modal-body">
           <label style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-display);">בחר את צבע הניאון המועדף עליך:</label>
@@ -1905,9 +1992,9 @@ export function renderSettings() {
 
     <!-- Become a Developer Application Form (If player role) -->
     ${state.user.role === 'player' ? `
-      <div class="modal-container" style="margin-top: 30px; max-width: 100%;">
-        <div class="modal-header" style="border-left: 4px solid var(--accent-color);">
-          <h2 class="modal-title">בקשה להפיכה למפתח משחקים ב-DIGGY</h2>
+      <div class="settings-card" style="margin-top: 30px; max-width: 100%;">
+        <div class="settings-card-header" style="border-left: 4px solid var(--accent-color); padding-left: 10px;">
+          <h2 class="settings-card-title">בקשה להפיכה למפתח משחקים ב-DIGGY</h2>
         </div>
         <div class="modal-body">
           <form id="dev-application-form">
@@ -1928,6 +2015,7 @@ export function renderSettings() {
                 <input type="password" id="dev-app-pass" required placeholder="הזן את סיסמת החשבון הנוכחי">
               </div>
             </div>
+
             <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
               <i class="fas fa-file-signature"></i> הגש בקשת מפתח
             </button>

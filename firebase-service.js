@@ -123,6 +123,52 @@ if (getLocalStorageData('games').length === 0) {
   saveLocalStorageData('games', defaultGames);
 }
 
+// Initialize default users in LocalStorage if empty
+if (getLocalStorageData('users').length === 0) {
+  const defaultUsers = [
+    {
+      uid: "local_admin_123",
+      username: "admin",
+      email: "admin@diggy.com",
+      role: "admin",
+      twoFactorEnabled: false,
+      twoFactorEmail: "",
+      biometricsEnabled: false,
+      customTheme: "#00ff66",
+      favorites: [],
+      recentlyPlayed: [],
+      createdAt: new Date().toISOString()
+    },
+    {
+      uid: "local_dev_456",
+      username: "developer_jon",
+      email: "jon@diggy.com",
+      role: "developer",
+      twoFactorEnabled: false,
+      twoFactorEmail: "",
+      biometricsEnabled: false,
+      customTheme: "#00ffff",
+      favorites: ["preset_snake"],
+      recentlyPlayed: [],
+      createdAt: new Date().toISOString()
+    },
+    {
+      uid: "local_player_789",
+      username: "gamer_kid",
+      email: "kid@diggy.com",
+      role: "player",
+      twoFactorEnabled: false,
+      twoFactorEmail: "",
+      biometricsEnabled: false,
+      customTheme: "#ff3366",
+      favorites: [],
+      recentlyPlayed: ["preset_snake"],
+      createdAt: new Date().toISOString()
+    }
+  ];
+  saveLocalStorageData('users', defaultUsers);
+}
+
 // --- CUSTOM AUTH LISTENER ---
 export function onAuthStateListener(callback) {
   authCallbacks.push(callback);
@@ -366,6 +412,32 @@ export async function changeUserPassword(newPassword) {
   
   // Local change is successful since we update username / profiles
   console.log("Local password updated successfully.");
+}
+
+/**
+ * Get all user profile documents (Admin only)
+ */
+export async function getAllUsers() {
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const q = firebaseFirestore.query(firebaseFirestore.collection(db, "users"));
+      const snap = await firebaseFirestore.getDocs(q);
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
+      return list;
+    } catch (e) {
+      console.warn("Firebase load all users failed, loading local:", e);
+    }
+  }
+
+  return getLocalStorageData('users');
+}
+
+/**
+ * Change a user's role directly (Admin only)
+ */
+export async function changeUserRole(uid, newRole) {
+  await updateUserProfile(uid, { role: newRole });
 }
 
 // --- DEVELOPER REQUEST WORKFLOW ---
