@@ -83,6 +83,7 @@ const routes = {
   '#/login': renderLogin,
   '#/dev': renderDev,
   '#/admin': renderAdmin,
+  '#/settings': renderSettings,
   '#/game/:id': renderGameDetails
 };
 

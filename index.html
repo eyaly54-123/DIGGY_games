@@ -94,13 +94,15 @@
     (function() {
       // Intercept path names to direct to standard SPA hash routing
       const path = window.location.pathname.toLowerCase();
-      // Match path variants like /admin, /dev, /login, /game/id
+      // Match path variants like /admin, /dev, /login, /settings, /game/id
       if (path.includes('/admin')) {
         window.location.hash = '#/admin';
       } else if (path.includes('/dev')) {
         window.location.hash = '#/dev';
       } else if (path.includes('/login')) {
         window.location.hash = '#/login';
+      } else if (path.includes('/settings')) {
+        window.location.hash = '#/settings';
       } else if (path.includes('/game/')) {
         const parts = path.split('/game/');
         const id = parts[parts.length - 1];
