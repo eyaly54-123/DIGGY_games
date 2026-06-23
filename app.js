@@ -160,6 +160,30 @@ function getSupportThreads() {
   }
 }
 
+function getSiteEmailSettings() {
+  try {
+    return {
+      supportEmail: 'support@diggy-arena.com',
+      legalEmail: 'legal@diggy-arena.com',
+      notificationEmail: 'support@diggy-arena.com',
+      ...JSON.parse(localStorage.getItem('diggy_email_settings') || '{}')
+    };
+  } catch {
+    return {
+      supportEmail: 'support@diggy-arena.com',
+      legalEmail: 'legal@diggy-arena.com',
+      notificationEmail: 'support@diggy-arena.com'
+    };
+  }
+}
+
+function saveSiteEmailSettings(settings) {
+  const current = getSiteEmailSettings();
+  const merged = { ...current, ...settings };
+  localStorage.setItem('diggy_email_settings', JSON.stringify(merged));
+  return merged;
+}
+
 function saveSupportThreads(threads) {
   localStorage.setItem('diggy_support_threads', JSON.stringify(threads));
 }
@@ -427,13 +451,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Listen for hash changes
   window.addEventListener('hashchange', handleRouting);
   
-  // Track system email simulation list
-  window.addEventListener('diggy-email-sent', (e) => {
-    state.recentEmails.unshift(e.detail);
-    updateSimulatedInboxUI();
+  // Track system email events without showing the old simulation widget
+  window.addEventListener('diggy-email-sent', () => {
+    state.recentEmails = state.recentEmails.slice(0, 5);
   });
 
-  setupInboxWidget();
   setupSidebarNavigation();
   setupFooterNavigation();
 
@@ -1738,6 +1760,18 @@ async function renderAdmin() {
     <div class="section-title">הגדרות EmailJS ואימיילים</div>
     <div class="data-table-container" style="padding: 20px;">
       <div class="form-group">
+        <label>אימייל תמיכה</label>
+        <input type="email" id="site-support-email" value="${getSiteEmailSettings().supportEmail || ''}" placeholder="support@yourdomain.com">
+      </div>
+      <div class="form-group">
+        <label>אימייל משפטי / DMCA</label>
+        <input type="email" id="site-legal-email" value="${getSiteEmailSettings().legalEmail || ''}" placeholder="legal@yourdomain.com">
+      </div>
+      <div class="form-group">
+        <label>אימייל התראות</label>
+        <input type="email" id="site-notification-email" value="${getSiteEmailSettings().notificationEmail || ''}" placeholder="alerts@yourdomain.com">
+      </div>
+      <div class="form-group">
         <label>Service ID</label>
         <input type="text" id="emailjs-service-id" value="${getResendConfigState().serviceId || ''}" placeholder="service_xxxxx">
       </div>
@@ -1797,11 +1831,19 @@ async function renderAdmin() {
       const publicKey = document.getElementById('emailjs-public-key').value;
       const fromName = document.getElementById('emailjs-from-name').value;
       const adminEmail = document.getElementById('support-admin-email').value;
+      const supportEmail = document.getElementById('site-support-email').value;
+      const legalEmail = document.getElementById('site-legal-email').value;
+      const notificationEmail = document.getElementById('site-notification-email').value;
       setResendConfig(serviceId, templateId, publicKey, fromName);
+      saveSiteEmailSettings({
+        supportEmail,
+        legalEmail,
+        notificationEmail
+      });
       if (adminEmail) {
         localStorage.setItem('diggy_support_admin_email', adminEmail);
       }
-      showToast('הגדרות EmailJS נשמרו.', 'success');
+      showToast('הגדרות EmailJS ואימיילים נשמרו.', 'success');
     });
   }
 
@@ -3146,88 +3188,6 @@ document.getElementById('settings-nav-btn').addEventListener('click', () => {
   navigateTo('#/settings');
 });
 
-// --- RESEND EMAIL INBOX SIMULATOR UI ---
-function setupInboxWidget() {
-  const widget = document.createElement('div');
-  widget.className = 'simulated-inbox-widget collapsed';
-  widget.id = 'simulated-inbox-widget';
-  widget.innerHTML = `
-    <div class="inbox-header" id="inbox-header">
-      <span class="inbox-title"><i class="fas fa-envelope-open-text"></i> תיבת מיילים (סימולציה)</span>
-      <span class="inbox-count" id="inbox-count">0</span>
-    </div>
-    <div class="inbox-body" id="inbox-body">
-      <div style="text-align: center; color: var(--text-dark); font-size: 11px; padding: 20px;">אין מיילים כרגע</div>
-    </div>
-  `;
-  document.body.appendChild(widget);
-
-  const header = document.getElementById('inbox-header');
-  header.addEventListener('click', () => {
-    widget.classList.toggle('collapsed');
-  });
-}
-
-function updateSimulatedInboxUI() {
-  const count = document.getElementById('inbox-count');
-  const body = document.getElementById('inbox-body');
-  if (!count || !body) return;
-
-  const emails = state.recentEmails;
-  count.textContent = emails.length;
-
-  if (emails.length === 0) {
-    body.innerHTML = `<div style="text-align: center; color: var(--text-dark); font-size: 11px; padding: 20px;">אין מיילים כרגע</div>`;
-    return;
-  }
-
-  body.innerHTML = emails.map(email => `
-    <div class="email-item" data-id="${email.id}">
-      <div class="email-item-subject">${email.subject}</div>
-      <div class="email-item-meta">
-        <span>נמען: ${email.to}</span>
-        <span>${email.sentAt}</span>
-      </div>
-    </div>
-  `).join('');
-
-  body.querySelectorAll('.email-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const id = item.getAttribute('data-id');
-      const email = emails.find(e => e.id === id);
-      if (email) {
-        openEmailViewer(email);
-      }
-    });
-  });
-}
-
-function openEmailViewer(email) {
-  const widget = document.getElementById('simulated-inbox-widget');
-  
-  const viewer = document.createElement('div');
-  viewer.className = 'email-content-view';
-  viewer.innerHTML = `
-    <div class="email-view-header">
-      <a href="#" class="email-view-back" id="email-view-back-btn"><i class="fas fa-arrow-left"></i> חזרה</a>
-      <span style="font-size: 11px; color: var(--text-dark);">${email.sentAt}</span>
-    </div>
-    <div style="font-size: 12px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
-      <div><strong>אל:</strong> ${email.to}</div>
-      <div><strong>נושא:</strong> ${email.subject}</div>
-    </div>
-    <div style="flex-grow: 1; overflow-y: auto;">
-      ${email.html}
-    </div>
-  `;
-  widget.appendChild(viewer);
-
-  document.getElementById('email-view-back-btn').addEventListener('click', (e) => {
-    e.preventDefault();
-    viewer.remove();
-  });
-}
-
 // --- PUBLIC ARTICLES ---
 const PUBLIC_ARTICLES = {
   'welcome': {
@@ -3524,7 +3484,7 @@ async function renderContact() {
     <div class="legal-page-content">
       <div class="doc-section">
         <h3><i class="fas fa-envelope" style="color: var(--accent-color);"></i> יצירת קשר כללית</h3>
-        <p>לשאלות, הצעות ותמיכה: <strong>support@diggy-arena.com</strong></p>
+        <p>לשאלות, הצעות ותמיכה: <strong>${getSiteEmailSettings().supportEmail || 'support@diggy-arena.com'}</strong></p>
       </div>
 
       <div class="doc-section" style="background: rgba(0,255,102,0.06); border: 1px solid rgba(0,255,102,0.16); border-radius: 12px; padding: 20px;">
@@ -3548,7 +3508,7 @@ async function renderContact() {
           <li>קישור לדף המשחק או התוכן הרלוונטי ב-DIGGY</li>
           <li>הצהרה שהשימוש אינו מורשה</li>
         </ul>
-        <p>שלחו ל: <strong>legal@diggy-arena.com</strong> — נטפל בפניה תוך 48 שעות עסקיות.</p>
+        <p>שלחו ל: <strong>${getSiteEmailSettings().legalEmail || 'legal@diggy-arena.com'}</strong> — נטפל בפניה תוך 48 שעות עסקיות.</p>
       </div>
       <div class="doc-section">
         <h3>קישורים מהירים</h3>
@@ -3578,7 +3538,7 @@ async function renderContact() {
       showLoader(true);
       try {
         const thread = createSupportThread({ name, email, subject, message });
-        const adminEmail = localStorage.getItem('diggy_support_admin_email') || 'support@diggy-arena.com';
+        const adminEmail = getSiteEmailSettings().supportEmail || localStorage.getItem('diggy_support_admin_email') || 'support@diggy-arena.com';
         const adminHtml = `
           <div style="font-family: sans-serif; background: #07080a; color: white; padding: 24px; border-radius: 12px; border: 1px solid #00ff66;">
             <h2 style="color: #00ff66;">פנייה חדשה לתמיכה - DIGGY</h2>
