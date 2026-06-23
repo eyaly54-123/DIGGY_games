@@ -1,1 +1,118 @@
-# eyal the king
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIGGY - Kids Neon Gaming Arena</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom Neon Theme Stylesheet -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- App Shell -->
+  <div id="app-root">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <div>
+        <div class="logo-container">
+          <div class="logo-text">DIGGY</div>
+        </div>
+
+        <nav class="nav-menu">
+          <div class="nav-section-title">ניווט מהיר</div>
+          <div class="nav-item active" id="home-nav-btn" data-route="#/">
+            <i class="fas fa-gamepad"></i>
+            <span>מסך הבית</span>
+          </div>
+
+          <div class="nav-section-title">פאנלים מיוחדים</div>
+          <!-- Dev Panel Button (Hidden/Shown dynamically or displays locks for player) -->
+          <div class="nav-item" id="dev-nav-btn" data-route="#/dev">
+            <i class="fas fa-code"></i>
+            <span>מפתחים</span>
+          </div>
+
+          <!-- Admin Panel Button -->
+          <div class="nav-item" id="admin-nav-btn" data-route="#/admin">
+            <i class="fas fa-user-shield"></i>
+            <span>ניהול ADMIN</span>
+          </div>
+        </nav>
+      </div>
+
+      <!-- Sidebar Footer (Settings & Badge) -->
+      <div class="sidebar-bottom">
+        <div class="nav-item" id="settings-nav-btn" data-route="#/settings" style="margin-bottom: 5px;">
+          <i class="fas fa-sliders-h"></i>
+          <span>הגדרות פרופיל</span>
+        </div>
+        
+        <!-- User account details -->
+        <div id="sidebar-user-badge-wrap"></div>
+      </div>
+    </aside>
+
+    <!-- Main Content Display -->
+    <main class="main-content" id="main-container"></main>
+
+  </div>
+
+  <!-- Global Modals Overlay -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-title">כותרת מודאל</h2>
+        <button class="modal-close" id="modal-close-btn"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Overlay Container -->
+  <div id="toast-container" style="position: fixed; bottom: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 200;"></div>
+
+  <!-- App Global Spinner Loader -->
+  <div id="app-global-loader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,6,8,0.7); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 300; flex-direction: column; gap: 15px;">
+    <div style="width: 50px; height: 50px; border: 4px solid var(--accent-color); border-top-color: transparent; border-radius: 50%; animation: spin 1s infinite linear; filter: drop-shadow(0 0 8px var(--accent-glow));"></div>
+    <div style="font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: bold; color: var(--accent-color); text-transform: uppercase;">מעבד נתונים...</div>
+  </div>
+
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+
+  <!-- Path-to-Hash Interceptor for URL simulation -->
+  <script>
+    (function() {
+      // Intercept path names to direct to standard SPA hash routing
+      const path = window.location.pathname.toLowerCase();
+      // Match path variants like /admin, /dev, /login, /game/id
+      if (path.includes('/admin')) {
+        window.location.hash = '#/admin';
+      } else if (path.includes('/dev')) {
+        window.location.hash = '#/dev';
+      } else if (path.includes('/login')) {
+        window.location.hash = '#/login';
+      } else if (path.includes('/game/')) {
+        const parts = path.split('/game/');
+        const id = parts[parts.length - 1];
+        if (id) {
+          window.location.hash = '#/game/' + id;
+        }
+      }
+    })();
+  </script>
+
+  <!-- Load Main JavaScript Logic -->
+  <script type="module" src="./app.js"></script>
+
+</body>
+</html>
