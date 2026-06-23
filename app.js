@@ -16,7 +16,7 @@ import {
   getActiveGames, 
   updateAndResubmitGameRequest,
   simulatedEmails,
-  auth
+  onAuthStateListener
 } from './firebase-service.js';
 
 // --- PLATFORM STATE ---
@@ -134,19 +134,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   setupInboxWidget();
 
-  // Listen to Firebase Auth state
-  auth.onAuthStateChanged(async (firebaseUser) => {
-    if (firebaseUser) {
-      try {
-        const profile = await getUserProfile(firebaseUser.uid);
-        state.user = profile;
-        applyTheme(profile.customTheme || '#00ff66');
-        renderUserBadge();
-      } catch (err) {
-        console.error("Failed to load user profile:", err);
-        state.user = null;
-        renderUserBadge();
-      }
+  // Listen to Auth state (Firebase or LocalStorage fallback)
+  onAuthStateListener(async (user) => {
+    if (user) {
+      state.user = user;
+      applyTheme(user.customTheme || '#00ff66');
+      renderUserBadge();
     } else {
       state.user = null;
       applyTheme('#00ff66');
