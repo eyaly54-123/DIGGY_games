@@ -25,7 +25,14 @@ import {
   registerWebAuthnCredential,
   verifyWebAuthnCredential,
   hasWebAuthnCredential,
-  removeWebAuthnCredential
+  removeWebAuthnCredential,
+  checkLoginRateLimit,
+  recordLoginAttempt,
+  clearLoginAttempts,
+  sanitizeInput,
+  validatePasswordStrength,
+  validateUsername,
+  validateEmail
 } from './firebase-service.js';
 
 // --- PLATFORM STATE ---
