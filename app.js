@@ -3038,6 +3038,327 @@ function openEmailViewer(email) {
   });
 }
 
+// --- PUBLIC ARTICLES ---
+const PUBLIC_ARTICLES = {
+  'welcome': {
+    title: 'ברוכים הבאים ל-DIGGY Arena',
+    date: '15 יוני 2026',
+    icon: 'fa-rocket',
+    excerpt: 'גלו את עולם המשחקים החדש לילדים — ארקייד, רטרו וקז\'ואל במקום אחד.',
+    content: `
+      <p>ברוכים הבאים ל-<strong>DIGGY Arena</strong> — פלטפורמת המשחקים המובילה לילדים ולנוער בישראל. כאן תמצאו מגוון רחב של משחקי ארקייד, רטרו וקז\'ואל שפותחו על ידי מפתחים מקומיים ובינלאומיים.</p>
+      <h3>מה מחכה לכם?</h3>
+      <ul>
+        <li>משחקים חינמיים לחלוטין — ללא פרסומות</li>
+        <li>קטגוריות מגוונות: RPG, RETRO, ACTION, PUZZLE ועוד</li>
+        <li>מערכת דירוג כוכבים לכל משחק</li>
+        <li>אפשרות לשמור משחקים מועדפים (לאחר הרשמה)</li>
+      </ul>
+      <p>הירשמו בחינם, בחרו משחק מהקטלוג, ותתחילו לשחק!</p>
+    `
+  },
+  'safe-gaming': {
+    title: 'משחקים בטוחים ברשת — מדריך לילדים',
+    date: '10 יוני 2026',
+    icon: 'fa-shield-alt',
+    excerpt: 'טיפים חשובים לשחק בצורה בטוחה ומהנה באינטרנט.',
+    content: `
+      <p>האינטרנט הוא מקום מדהים לשחק וללמוד, אבל חשוב לשחק בחוכמה. הנה כמה כללים בסיסיים:</p>
+      <ul>
+        <li><strong>אל תשתפו מידע אישי</strong> — לא שם מלא, כתובת, מספר טלפון או סיסמאות</li>
+        <li><strong>ספרו להורים</strong> — אם משהו מרגיש לא נכון, ספרו למבוגר</li>
+        <li><strong>קחו הפסקות</strong> — קום וזוז כל 30 דקות</li>
+        <li><strong>שחקו רק באתרים מוכרים</strong> — DIGGY בודק כל משחק לפני פרסום</li>
+      </ul>
+    `
+  },
+  'parents-guide': {
+    title: 'מדריך להורים — DIGGY Arena',
+    date: '8 יוני 2026',
+    icon: 'fa-users',
+    excerpt: 'כל מה שהורים צריכים לדעת על הפלטפורמה שלנו.',
+    content: `
+      <p>DIGGY Arena נועדה לספק סביבת משחקים בטוחה וחינוכית לילדים. כל משחק עובר בדיקת איכות ואישור מנהל לפני פרסום.</p>
+      <h3>מה אנחנו מבטיחים?</h3>
+      <ul>
+        <li>ללא פרסומות או קישורים חיצוניים בתוך המשחקים</li>
+        <li>ללא איסוף מידע אישי מילדים ללא הסכמת הורים</li>
+        <li>תוכן מותאם לגיל — ללא אלימות או תכנים פוגעניים</li>
+        <li>אפשרות לאימות דו-שלבי לחשבונות</li>
+      </ul>
+      <p>לשאלות נוספות, פנו אלינו דרך <a href="#/contact" style="color: var(--accent-color);">דף צור קשר</a>.</p>
+    `
+  },
+  'community': {
+    title: 'כללי קהילה DIGGY',
+    date: '5 יוני 2026',
+    icon: 'fa-handshake',
+    excerpt: 'כיצד לשמור על קהילה נעימה, מכבדת ומהנה.',
+    content: `
+      <p>קהילת DIGGY בנויה על כבוד הדדי. אנו מצפים מכל המשתמשים:</p>
+      <ul>
+        <li>לדרג משחקים בכנות ובהגינות</li>
+        <li>לא לנסות לפרוץ או לפגוע במערכת</li>
+        <li>לדווח על תוכן בעייתי דרך דף צור קשר</li>
+        <li>לכבד מפתחים ושחקנים אחרים</li>
+      </ul>
+      <p>הפרה של כללי הקהילה עלולה להוביל לחסימת חשבון.</p>
+    `
+  },
+  'top-games': {
+    title: 'המשחקים הפופולריים השבוע',
+    date: '1 יוני 2026',
+    icon: 'fa-fire',
+    excerpt: 'אלו המשחקים שזכו לדירוג הגבוה ביותר השבוע.',
+    content: `
+      <p>כל שבוע אנו מפרסמים את המשחקים המובילים לפי דירוג שחקנים וכמות משחקים. הנה הנבחרים:</p>
+      <ul>
+        <li><strong>Neon Snake</strong> — קלאסיקת הארקייד עם עיצוב ניאון מרהיב ⭐ 4.8</li>
+        <li><strong>Space Laser Evader</strong> — משחק חלל מאתגר ⭐ 4.9</li>
+        <li><strong>Brick Breaker Glow</strong> — שובר לבנים עם אפקטים זוהרים ⭐ 4.6</li>
+      </ul>
+      <p>דרגו את המשחקים האהובים עליכם ועזרו לקהילה לגלות פנינים חדשות!</p>
+    `
+  },
+  'ratings-guide': {
+    title: 'איך עובדת מערכת הדירוג?',
+    date: '28 מאי 2026',
+    icon: 'fa-star',
+    excerpt: 'הסבר על מערכת הכוכבים — דרגו משחקים ועזרו לקהילה.',
+    content: `
+      <p>ב-DIGGY כל שחקן יכול לדרג משחק פעם אחת בלבד, בסולם של 1–5 כוכבים.</p>
+      <h3>איך לדרג?</h3>
+      <ul>
+        <li>היכנסו לדף המשחק</li>
+        <li>בצד ימין תראו "דרג את המשחק"</li>
+        <li>לחצו על מספר הכוכבים שמתאים לחוויה שלכם</li>
+      </ul>
+      <p>הדירוג הממוצע מוצג על כרטיס המשחק ובדף הפרטים. מפתחים מקבלים בונוס תגמול על משחקים עם דירוג גבוה!</p>
+    `
+  },
+  'new-features': {
+    title: 'חידושים ועדכונים — יוני 2026',
+    date: '20 יוני 2026',
+    icon: 'fa-sparkles',
+    excerpt: 'מערכת דירוג חדשה, מאמרים ציבוריים ושיפורי ניווט.',
+    content: `
+      <p>אנחנו שמחים לעדכן על חידושים חדשים בפלטפורמה:</p>
+      <ul>
+        <li><strong>מערכת דירוג כוכבים</strong> — דרגו כל משחק וראו את הדירוג הממוצע</li>
+        <li><strong>מאמרים וחדשות</strong> — תוכן חדש לשחקנים והורים</li>
+        <li><strong>מפת אתר משופרת</strong> — ניווט קל לכל הדפים</li>
+        <li><strong>דפי מידע משפטי</strong> — תנאי שימוש, פרטיות וצור קשר</li>
+      </ul>
+    `
+  }
+};
+
+async function renderArticles() {
+  ensureContentPageStyles();
+  const main = document.getElementById('main-container');
+  const articles = Object.entries(PUBLIC_ARTICLES);
+
+  main.innerHTML = `
+    <div class="top-header">
+      <div class="page-title-wrap">
+        <h1>מאמרים וחדשות</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">טיפים, מדריכים ועדכונים מעולם DIGGY</p>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
+      ${articles.map(([slug, art]) => `
+        <div class="article-card" data-slug="${slug}">
+          <div class="article-card-date"><i class="fas fa-calendar-alt"></i> ${art.date}</div>
+          <h3 class="article-card-title"><i class="fas ${art.icon}" style="color: var(--accent-color); margin-left: 8px;"></i>${art.title}</h3>
+          <p class="article-card-excerpt">${art.excerpt}</p>
+          <span style="color: var(--accent-color); font-size: 13px; margin-top: 10px; display: inline-block;">קרא עוד ←</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  main.querySelectorAll('.article-card').forEach(card => {
+    card.addEventListener('click', () => {
+      navigateTo(`#/articles/${card.getAttribute('data-slug')}`);
+    });
+  });
+}
+
+async function renderArticleDetail(slug) {
+  ensureContentPageStyles();
+  const main = document.getElementById('main-container');
+  const article = PUBLIC_ARTICLES[slug];
+
+  if (!article) {
+    main.innerHTML = `
+      <div style="text-align: center; padding: 80px 0;">
+        <h2>מאמר לא נמצא</h2>
+        <button class="btn btn-primary" onclick="window.location.hash='#/articles'" style="margin-top: 20px;">חזרה למאמרים</button>
+      </div>
+    `;
+    return;
+  }
+
+  main.innerHTML = `
+    <div style="margin-bottom: 20px;">
+      <a href="#/articles" style="color: var(--accent-color); font-size: 14px;"><i class="fas fa-chevron-right"></i> חזרה לכל המאמרים</a>
+    </div>
+    <div class="legal-page-content">
+      <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;"><i class="fas fa-calendar-alt"></i> ${article.date}</div>
+      <h2 class="doc-article-title"><i class="fas ${article.icon}"></i> ${article.title}</h2>
+      <div class="doc-section">${article.content}</div>
+    </div>
+  `;
+}
+
+async function renderSitemap() {
+  ensureContentPageStyles();
+  const main = document.getElementById('main-container');
+  const gameLinks = state.games.map(g => `<li><a href="#/game/${g.id}">${g.name}</a></li>`).join('');
+  const articleLinks = Object.entries(PUBLIC_ARTICLES).map(([slug, art]) =>
+    `<li><a href="#/articles/${slug}">${art.title}</a></li>`
+  ).join('');
+
+  main.innerHTML = `
+    <div class="top-header">
+      <div class="page-title-wrap">
+        <h1>מפת האתר</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">כל הדפים והקישורים באתר DIGGY Arena</p>
+      </div>
+    </div>
+    <div class="legal-page-content">
+      <div class="sitemap-grid">
+        <div class="sitemap-group">
+          <h3><i class="fas fa-home"></i> עמודים ראשיים</h3>
+          <ul>
+            <li><a href="#/">מסך הבית — קטלוג משחקים</a></li>
+            <li><a href="#/articles">מאמרים וחדשות</a></li>
+            <li><a href="#/login">הרשמה / כניסה</a></li>
+            <li><a href="#/settings">הגדרות פרופיל</a></li>
+          </ul>
+        </div>
+        <div class="sitemap-group">
+          <h3><i class="fas fa-gamepad"></i> משחקים (${state.games.length})</h3>
+          <ul>${gameLinks || '<li>אין משחקים</li>'}</ul>
+        </div>
+        <div class="sitemap-group">
+          <h3><i class="fas fa-newspaper"></i> מאמרים</h3>
+          <ul>${articleLinks}</ul>
+        </div>
+        <div class="sitemap-group">
+          <h3><i class="fas fa-gavel"></i> מידע משפטי</h3>
+          <ul>
+            <li><a href="#/terms">תנאי שימוש</a></li>
+            <li><a href="#/privacy">מדיניות פרטיות</a></li>
+            <li><a href="#/contact">צור קשר / זכויות יוצרים</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function renderTerms() {
+  ensureContentPageStyles();
+  const main = document.getElementById('main-container');
+  main.innerHTML = `
+    <div class="top-header">
+      <div class="page-title-wrap">
+        <h1>תנאי שימוש</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">עודכן לאחרונה: יוני 2026</p>
+      </div>
+    </div>
+    <div class="legal-page-content">
+      <div class="doc-section">
+        <h3>1. קבלת התנאים</h3>
+        <p>שימוש באתר DIGGY Arena מהווה הסכמה לתנאי שימוש אלה. אם אינך מסכים — אנא אל תשתמש באתר.</p>
+      </div>
+      <div class="doc-section">
+        <h3>2. זכויות יוצרים</h3>
+        <p>כל התוכן באתר — עיצוב, לוגו, טקסטים וממשק — שייך ל-DIGGY Arena Ltd. אלא אם צוין אחרת. משחקים שפורסמו באתר שייכים למפתחיהם, והם מעניקים ל-DIGGY רישיון להציגם.</p>
+        <p>בעלי זכויות יוצרים שמזהים הפרה יכולים לפנות אלינו דרך <a href="#/contact" style="color: var(--accent-color);">דף צור קשר</a> עם פרטי ההפרה. נטפל בפניות תוך 48 שעות.</p>
+      </div>
+      <div class="doc-section">
+        <h3>3. שימוש מותר</h3>
+        <p>האתר מיועד לשחק משחקים, לדרגם ולקרוא תוכן. אסור לפרוץ, להעתיק, לסרוק או לעשות שימוש מסחרי ללא אישור.</p>
+      </div>
+      <div class="doc-section">
+        <h3>4. הגבלת אחריות</h3>
+        <p>DIGGY Arena מספקת את השירות "כפי שהוא". איננו אחראים לנזקים הנובעים משימוש באתר או במשחקים של צד שלישי.</p>
+      </div>
+    </div>
+  `;
+}
+
+async function renderPrivacy() {
+  ensureContentPageStyles();
+  const main = document.getElementById('main-container');
+  main.innerHTML = `
+    <div class="top-header">
+      <div class="page-title-wrap">
+        <h1>מדיניות פרטיות</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">עודכן לאחרונה: יוני 2026</p>
+      </div>
+    </div>
+    <div class="legal-page-content">
+      <div class="doc-section">
+        <h3>1. מידע שאנו אוספים</h3>
+        <p>אנו אוספים: שם משתמש, כתובת אימייל (בהרשמה), העדפות משחק (מועדפים, היסטוריה) ודירוגים. לא נאסוף מידע מילדים מתחת לגיל 13 ללא הסכמת הורים.</p>
+      </div>
+      <div class="doc-section">
+        <h3>2. שימוש במידע</h3>
+        <p>המידע משמש להפעלת החשבון, שיפור חוויית המשחק, ותקשורת עם המשתמש. לא נמכור מידע לצד שלישי.</p>
+      </div>
+      <div class="doc-section">
+        <h3>3. אחסון ואבטחה</h3>
+        <p>נתונים נשמרים ב-Firebase/Google Cloud עם הצפנה. דירוגים ומועדפים נשמרים גם ב-localStorage בדפדפן.</p>
+      </div>
+      <div class="doc-section">
+        <h3>4. זכויותיכם</h3>
+        <p>ניתן לבקש מחיקת חשבון ונתונים דרך <a href="#/contact" style="color: var(--accent-color);">דף צור קשר</a>.</p>
+      </div>
+    </div>
+  `;
+}
+
+async function renderContact() {
+  ensureContentPageStyles();
+  const main = document.getElementById('main-container');
+  main.innerHTML = `
+    <div class="top-header">
+      <div class="page-title-wrap">
+        <h1>צור קשר</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">נשמח לעזור — שחקנים, הורים ובעלי זכויות</p>
+      </div>
+    </div>
+    <div class="legal-page-content">
+      <div class="doc-section">
+        <h3><i class="fas fa-envelope" style="color: var(--accent-color);"></i> יצירת קשר כללית</h3>
+        <p>לשאלות, הצעות ותמיכה: <strong>support@diggy-arena.com</strong></p>
+      </div>
+      <div class="doc-section" style="background: rgba(255,200,0,0.05); border: 1px solid rgba(255,200,0,0.15); border-radius: 12px; padding: 20px;">
+        <h3><i class="fas fa-copyright" style="color: #ffd700;"></i> בעלי זכויות יוצרים (DMCA)</h3>
+        <p>אם אתם בעלי זכויות ומזהים תוכן המפר את זכויותיכם באתר שלנו, אנא שלחו אלינו:</p>
+        <ul>
+          <li>שם מלא ופרטי התקשרות</li>
+          <li>תיאור היצירה המוגנת</li>
+          <li>קישור לדף המשחק או התוכן הרלוונטי ב-DIGGY</li>
+          <li>הצהרה שהשימוש אינו מורשה</li>
+        </ul>
+        <p>שלחו ל: <strong>legal@diggy-arena.com</strong> — נטפל בפניה תוך 48 שעות עסקיות.</p>
+      </div>
+      <div class="doc-section">
+        <h3>קישורים מהירים</h3>
+        <p>
+          <a href="#/sitemap" style="color: var(--accent-color); margin-left: 15px;">מפת האתר</a>
+          <a href="#/terms" style="color: var(--accent-color); margin-left: 15px;">תנאי שימוש</a>
+          <a href="#/privacy" style="color: var(--accent-color);">מדיניות פרטיות</a>
+        </p>
+      </div>
+    </div>
+  `;
+}
+
 // Render: DEVELOPER DOCUMENTATION
 async function renderDevDocs() {
   const main = document.getElementById('main-container');
@@ -3214,8 +3535,8 @@ async function renderDevDocs() {
         <p>מכיוון שהמשחקים נטענים בתוך מסגרת משחק קבועה בדף, על המשחק שלך להתאים את עצמו בצורה חלקה לכל גודל חלון (מומלץ להשתמש ב-100% רוחב וגובה של ה-viewport או לתמוך ביחס גובה-רוחב גמיש).</p>
       </div>
       <div class="doc-section">
-        <h3>2. קוד מקור פתוח (GitHub Repository)</h3>
-        <p>אנו מאמינים בשיתוף ידע ולמידה הדדית. מפתחים נדרשים לשתף את קוד המקור של המשחק שלהם ב-GitHub. קישור זה יוצג לצד המשחק ויאפשר לילדים אחרים ללמוד כיצד בניתם את המשחק.</p>
+        <h3>2. קוד מקור (לבדיקת Admin בלבד)</h3>
+        <p>מפתחים נדרשים לספק קישור לקוד המקור לצורך בדיקת איכות ואבטחה על ידי צוות הניהול. קישור זה <strong>אינו מוצג לציבור</strong> ומשמש אך ורק לתהליך האישור.</p>
       </div>
       <div class="doc-section">
         <h3>3. שמירה על סביבה בטוחה לילדים</h3>
