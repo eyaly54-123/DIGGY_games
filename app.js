@@ -232,6 +232,10 @@ function setupSidebarNavigation() {
           <i class="fas fa-code"></i>
           <span>פאנל מפתח</span>
         </div>
+        <div class="nav-item" id="dev-docs-btn" data-route="#/dev-docs">
+          <i class="fas fa-book"></i>
+          <span>מדריך מפתחים</span>
+        </div>
       `;
     }
 
