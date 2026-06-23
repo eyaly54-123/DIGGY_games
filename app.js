@@ -16,6 +16,7 @@ import {
   getActiveGames, 
   updateAndResubmitGameRequest,
   recordGamePlay,
+  rateGame,
   submitGameVersionRequest,
   simulatedEmails,
   onAuthStateListener,
@@ -63,7 +64,10 @@ const PRESET_GAMES = [
     categories: ["RETRO", "RPG"],
     developerUid: "system",
     developerName: "DIGGY Core Devs",
-    approved: true
+    approved: true,
+    rating: 4.8,
+    ratingCount: 156,
+    ratingSum: 748.8
   },
   {
     id: "preset_bricks",
@@ -76,7 +80,10 @@ const PRESET_GAMES = [
     categories: ["RETRO", "MULTIPLAYER"],
     developerUid: "system",
     developerName: "DIGGY Core Devs",
-    approved: true
+    approved: true,
+    rating: 4.6,
+    ratingCount: 98,
+    ratingSum: 450.8
   },
   {
     id: "preset_evader",
@@ -89,9 +96,133 @@ const PRESET_GAMES = [
     categories: ["RPG", "RETRO"],
     developerUid: "system",
     developerName: "DIGGY Core Devs",
-    approved: true
+    approved: true,
+    rating: 4.9,
+    ratingCount: 203,
+    ratingSum: 994.7
   }
 ];
+
+// --- RATING HELPERS ---
+function getGameRatingInfo(game) {
+  const rating = parseFloat(game.rating ?? 5.0);
+  const count = game.ratingCount ?? 0;
+  return { rating, count, display: rating.toFixed(1) };
+}
+
+function renderStarsDisplay(rating, count, sizeClass = '') {
+  const num = parseFloat(rating);
+  let stars = '';
+  for (let i = 1; i <= 5; i++) {
+    if (num >= i - 0.25) {
+      stars += '<i class="fas fa-star"></i>';
+    } else if (num >= i - 0.75) {
+      stars += '<i class="fas fa-star-half-alt"></i>';
+    } else {
+      stars += '<i class="far fa-star"></i>';
+    }
+  }
+  const countHtml = count > 0 ? `<span class="rating-count">(${count})</span>` : '';
+  return `<div class="star-rating-display ${sizeClass}">${stars}<span class="rating-value">${num.toFixed(1)}</span>${countHtml}</div>`;
+}
+
+function getUserRatingsStore() {
+  try {
+    return JSON.parse(localStorage.getItem('diggy_game_ratings') || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveUserRating(gameId, score) {
+  const store = getUserRatingsStore();
+  const userKey = state.user?.uid || 'guest';
+  if (!store[userKey]) store[userKey] = {};
+  store[userKey][gameId] = score;
+  localStorage.setItem('diggy_game_ratings', JSON.stringify(store));
+}
+
+function getUserRatingForGame(gameId) {
+  const store = getUserRatingsStore();
+  const userKey = state.user?.uid || 'guest';
+  return store[userKey]?.[gameId] || null;
+}
+
+function setupGameRatingUI(gameId) {
+  const container = document.getElementById('game-rating-input');
+  const displayEl = document.getElementById('game-rating-display');
+  if (!container) return;
+
+  const game = state.games.find(g => g.id === gameId);
+  if (!game) return;
+
+  const existingRating = getUserRatingForGame(gameId);
+  const { rating, count } = getGameRatingInfo(game);
+
+  if (displayEl) {
+    displayEl.innerHTML = renderStarsDisplay(rating, count);
+  }
+
+  container.innerHTML = `
+    <div class="rating-input-label">דרג את המשחק:</div>
+    <div class="star-rating-input" id="star-input-btns">
+      ${[1, 2, 3, 4, 5].map(n => `
+        <button type="button" class="star-input-btn ${existingRating >= n ? 'selected' : ''}" data-score="${n}" title="${n} כוכבים">
+          <i class="${existingRating >= n ? 'fas' : 'far'} fa-star"></i>
+        </button>
+      `).join('')}
+    </div>
+    ${existingRating ? `<div class="rating-user-msg">דרגת ${existingRating} כוכבים</div>` : ''}
+  `;
+
+  container.querySelectorAll('.star-input-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const score = parseInt(btn.getAttribute('data-score'), 10);
+      if (getUserRatingForGame(gameId)) {
+        showToast('כבר דירגת משחק זה!', 'warning');
+        return;
+      }
+
+      showLoader(true);
+      try {
+        const newRating = await rateGame(gameId, score);
+        saveUserRating(gameId, score);
+        const idx = state.games.findIndex(g => g.id === gameId);
+        if (idx !== -1) {
+          state.games[idx].rating = newRating;
+          state.games[idx].ratingCount = (state.games[idx].ratingCount || 0) + 1;
+          state.games[idx].ratingSum = (state.games[idx].ratingSum || 0) + score;
+        }
+        showToast('תודה על הדירוג! ⭐', 'success');
+        setupGameRatingUI(gameId);
+      } catch (err) {
+        showToast('שגיאה בשמירת הדירוג', 'danger');
+      } finally {
+        showLoader(false);
+      }
+    });
+
+    btn.addEventListener('mouseenter', () => {
+      if (getUserRatingForGame(gameId)) return;
+      const hoverScore = parseInt(btn.getAttribute('data-score'), 10);
+      container.querySelectorAll('.star-input-btn').forEach(b => {
+        const s = parseInt(b.getAttribute('data-score'), 10);
+        const icon = b.querySelector('i');
+        icon.className = s <= hoverScore ? 'fas fa-star' : 'far fa-star';
+      });
+    });
+
+    btn.addEventListener('mouseleave', () => {
+      const current = getUserRatingForGame(gameId);
+      container.querySelectorAll('.star-input-btn').forEach(b => {
+        const s = parseInt(b.getAttribute('data-score'), 10);
+        const icon = b.querySelector('i');
+        icon.className = current && s <= current ? 'fas fa-star' : 'far fa-star';
+        b.classList.toggle('selected', current && s <= current);
+      });
+    });
+  });
+}
 
 // --- SPA ROUTER ---
 const routes = {
@@ -101,6 +232,11 @@ const routes = {
   '#/dev-docs': renderDevDocs,
   '#/admin': renderAdmin,
   '#/settings': renderSettings,
+  '#/articles': renderArticles,
+  '#/sitemap': renderSitemap,
+  '#/terms': renderTerms,
+  '#/privacy': renderPrivacy,
+  '#/contact': renderContact,
   '#/game/:id': renderGameDetails
 };
 
