@@ -505,16 +505,30 @@ function renderLogin() {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = document.getElementById('auth-username').value;
+    const username = sanitizeInput(document.getElementById('auth-username').value);
     const password = document.getElementById('auth-password').value;
 
-    if (username.length < 6 || username.length > 12) {
-      showToast("שם המשתמש חייב להיות בין 6 ל-12 תווים!", "danger");
+    // Validate username
+    const usernameValidation = validateUsername(username);
+    if (!usernameValidation.valid) {
+      showToast(usernameValidation.errors[0], "danger");
       return;
     }
-    if (password.length < 6 || password.length > 12) {
-      showToast("הסיסמה חייבת להיות בין 6 ל-12 תווים!", "danger");
+
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.valid) {
+      showToast(passwordValidation.errors[0], "danger");
       return;
+    }
+
+    // Check rate limiting for login
+    if (!isRegisterMode) {
+      const rateLimit = checkLoginRateLimit(username);
+      if (!rateLimit.allowed) {
+        showToast(`יותר מדי ניסיונות כניסה. נסה שוב בעוד ${rateLimit.remainingTime} דקות.`, "danger");
+        return;
+      }
     }
 
     showLoader(true);
@@ -526,7 +540,11 @@ function renderLogin() {
         navigateTo('#/');
       } else {
         // Sign In
+        recordLoginAttempt(username);
         const profile = await logInUser(username, password);
+        
+        // Clear login attempts on successful login
+        clearLoginAttempts(username);
         
         // Check 2FA
         if (profile.twoFactorEnabled) {
@@ -2035,11 +2053,14 @@ export function renderSettings() {
 
   // Bind settings profile username update
   document.getElementById('save-profile-btn').addEventListener('click', async () => {
-    const newUsername = document.getElementById('settings-username').value.trim();
-    if (newUsername.length < 6 || newUsername.length > 12) {
-      showToast("שם המשתמש חייב להיות בין 6 ל-12 תווים", "danger");
+    const newUsername = sanitizeInput(document.getElementById('settings-username').value.trim());
+    const usernameValidation = validateUsername(newUsername);
+    
+    if (!usernameValidation.valid) {
+      showToast(usernameValidation.errors[0], "danger");
       return;
     }
+    
     showLoader(true);
     try {
       await updateUserProfile(state.user.uid, { username: newUsername });
@@ -2056,10 +2077,13 @@ export function renderSettings() {
   // Change password binding
   document.getElementById('change-pass-btn').addEventListener('click', async () => {
     const newPass = document.getElementById('settings-new-password').value;
-    if (newPass.length < 6 || newPass.length > 12) {
-      showToast("הסיסמה חייבת להיות בין 6 ל-12 תווים!", "danger");
+    const passwordValidation = validatePasswordStrength(newPass);
+    
+    if (!passwordValidation.valid) {
+      showToast(passwordValidation.errors[0], "danger");
       return;
     }
+    
     showLoader(true);
     try {
       await changeUserPassword(newPass);
@@ -2091,8 +2115,14 @@ export function renderSettings() {
   // If 2FA gets updated, save profile email
   const input2faEmail = document.getElementById('settings-2fa-email');
   input2faEmail.addEventListener('change', async () => {
-    const val = input2faEmail.value.trim();
+    const val = sanitizeInput(input2faEmail.value.trim());
     if (val) {
+      const emailValidation = validateEmail(val);
+      if (!emailValidation.valid) {
+        showToast(emailValidation.error, "danger");
+        return;
+      }
+      
       showLoader(true);
       await updateUserProfile(state.user.uid, { 
         twoFactorEnabled: true, 
