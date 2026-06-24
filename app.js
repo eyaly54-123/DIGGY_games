@@ -3046,6 +3046,8 @@ export function renderSettings() {
   // 2FA Toggle binding
   const toggle2fa = document.getElementById('settings-2fa-toggle');
   const group2fa = document.getElementById('settings-2fa-email-group');
+  const input2faEmail = document.getElementById('settings-2fa-email');
+  
   toggle2fa.addEventListener('change', async () => {
     const enabled = toggle2fa.checked;
     group2fa.style.display = enabled ? 'block' : 'none';
@@ -3063,11 +3065,33 @@ export function renderSettings() {
       state.user.twoFactorEnabled = false;
       showToast("אימות דו-שלבי בוטל.", "info");
       showLoader(false);
+    } else {
+      let val = sanitizeInput(input2faEmail.value.trim());
+      if (!val && state.user.email) {
+        val = state.user.email;
+        input2faEmail.value = val;
+      }
+      
+      if (val) {
+        const emailValidation = validateEmail(val);
+        if (emailValidation.valid) {
+          showLoader(true);
+          await updateUserProfile(state.user.uid, { 
+            twoFactorEnabled: true, 
+            twoFactorEmail: val 
+          });
+          state.user.twoFactorEnabled = true;
+          state.user.twoFactorEmail = val;
+          showToast("אימות דו-שלבי הופעל בהצלחה!", "success");
+          showLoader(false);
+          return;
+        }
+      }
+      showToast("נא להזין כתובת אימייל תקינה להשלמת ההפעלה.", "warning");
     }
   });
 
   // If 2FA gets updated, save profile email
-  const input2faEmail = document.getElementById('settings-2fa-email');
   input2faEmail.addEventListener('change', async () => {
     const val = sanitizeInput(input2faEmail.value.trim());
     if (!val) {

@@ -1188,7 +1188,7 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
   if (emailJSSettings.enabled && typeof window !== 'undefined' && window.emailjs) {
     try {
       if (emailJSSettings.publicKey && typeof window.emailjs.init === 'function') {
-        window.emailjs.init(emailJSSettings.publicKey);
+        window.emailjs.init({ publicKey: emailJSSettings.publicKey });
       }
 
       const response = await window.emailjs.send(
@@ -1206,7 +1206,9 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
           replyTo: recipientEmail,
           from_name: emailJSSettings.fromName
         },
-        emailJSSettings.publicKey
+        {
+          publicKey: emailJSSettings.publicKey
+        }
       );
 
       if (response?.status === 200) {
