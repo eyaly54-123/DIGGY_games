@@ -41,7 +41,8 @@ import {
   setResendConfig,
   getResendConfigState,
   isPrivilegedRole,
-  getPrivilegedAccountRequirements
+  getPrivilegedAccountRequirements,
+  getFirebaseStatus
 } from './firebase-service.js';
 
 // --- PLATFORM STATE ---
@@ -816,6 +817,16 @@ async function renderHome() {
 
   renderHeaderActions();
   setupPromoCarousel();
+  
+  // Show Firebase connection status
+  const fbStatus = getFirebaseStatus();
+  if (!fbStatus.connected) {
+    const statusDiv = document.createElement('div');
+    statusDiv.style.cssText = 'background: rgba(255, 165, 0, 0.1); border: 1px solid orange; border-radius: 8px; padding: 10px 15px; margin-bottom: 20px; font-size: 13px; color: orange;';
+    statusDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> ${fbStatus.message}`;
+    main.insertBefore(statusDiv, main.querySelector('.promo-slider'));
+  }
+  
   renderGamesGrid('ALL');
   renderRecentlyPlayedAndFavorites();
 

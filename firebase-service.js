@@ -16,6 +16,13 @@ let db = null;
 let firebaseLoaded = false;
 let fallbackMode = false;
 
+// Export for UI status checking
+export function getFirebaseStatus() {
+  if (fallbackMode) return { connected: false, mode: 'local', message: 'Local mode - games NOT shared between users' };
+  if (firebaseLoaded) return { connected: true, mode: 'firebase', message: 'Connected - games shared across all users' };
+  return { connected: false, mode: 'loading', message: 'Connecting to Firebase...' };
+}
+
 // Dynamic imports of Firebase services
 let firebaseAuth = null;
 let firebaseFirestore = null;
@@ -40,6 +47,7 @@ async function initFirebase() {
     auth = firebaseAuth.getAuth(app);
     db = firebaseFirestore.getFirestore(app);
     firebaseLoaded = true;
+    console.log("Firebase dynamically initialized successfully. Games will be shared across users.");
 
     // Listen to native auth state changes
     firebaseAuth.onAuthStateChanged(auth, async (fbUser) => {
@@ -59,9 +67,8 @@ async function initFirebase() {
       // If firebase auth says null or fails to query profile, check local storage
       checkLocalSession();
     });
-    console.log("Firebase dynamically initialized successfully.");
   } catch (e) {
-    console.warn("Firebase SDK failed to load from CDN. Operating in local-only fallback mode.", e);
+    console.warn("Firebase SDK failed to load from CDN. Operating in local-only fallback mode. Games will NOT be shared between users!", e);
     fallbackMode = true;
     checkLocalSession();
   }
@@ -920,13 +927,18 @@ export async function getActiveGames() {
       const snap = await firebaseFirestore.getDocs(q);
       const list = [];
       snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+      console.log("Loaded games from Firebase:", list.length);
       return list;
     } catch (e) {
       console.warn("Firebase load active games failed, loading local:", e);
     }
+  } else {
+    console.log("Firebase not loaded or in fallback mode, using local storage only");
   }
 
-  return getLocalStorageData('games').filter(g => g.approved === true);
+  const localGames = getLocalStorageData('games').filter(g => g.approved === true);
+  console.log("Loaded games from local storage:", localGames.length);
+  return localGames;
 }
 
 export async function updateGameDetails(gameId, updatedData) {
