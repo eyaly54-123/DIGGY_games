@@ -20,6 +20,7 @@ import {
   rateGame,
   debugLocalStorageGames,
   removeGameByName,
+  clearAllLocalStorage,
   submitGameVersionRequest,
   simulatedEmails,
   onAuthStateListener,
@@ -1795,7 +1796,10 @@ async function renderAdmin() {
         <h1>System Admin Dashboard (Admin)</h1>
         <p style="color: var(--text-muted); margin-top: 5px;">Manage developer applications, approve new games, and direct uploads</p>
       </div>
-      <button class="btn btn-primary" id="admin-direct-upload-btn"><i class="fas fa-upload"></i> Direct Game Upload</button>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-danger" id="clear-local-storage-btn"><i class="fas fa-trash"></i> Clear Local Storage</button>
+        <button class="btn btn-primary" id="admin-direct-upload-btn"><i class="fas fa-upload"></i> Direct Game Upload</button>
+      </div>
     </div>
 
     <!-- Dev Applications Section -->
@@ -1906,6 +1910,15 @@ async function renderAdmin() {
   `;
 
   renderAdminSupportChat(state.supportActiveThreadId);
+
+  // Bind clear localStorage button
+  document.getElementById('clear-local-storage-btn').addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all localStorage? This will remove all local data and the system will rely entirely on Firebase.')) {
+      clearAllLocalStorage();
+      showToast('Local storage cleared. System will now use Firebase only.', 'success');
+      setTimeout(() => location.reload(), 1500);
+    }
+  });
 
   // Bind direct upload
   document.getElementById('admin-direct-upload-btn').addEventListener('click', () => {

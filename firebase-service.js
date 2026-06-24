@@ -949,10 +949,11 @@ export async function getActiveGames() {
   // Log all game names for debugging
   console.log("All local games:", localGames.map(g => ({ id: g.id, name: g.name })));
   
-  // Check for game named "123"
+  // Check for game named "123" and remove it automatically
   const game123 = localGames.find(g => g.name === '123' || g.name === '123 ');
   if (game123) {
-    console.warn("Found game named '123' in localStorage:", game123);
+    console.warn("Found game named '123' in localStorage - removing it:", game123);
+    removeGameByName('123');
   }
   
   return localGames;
@@ -987,6 +988,25 @@ export function removeGameByName(gameName) {
   }
   console.log(`No game named "${gameName}" found to remove`);
   return false;
+}
+
+export function clearAllLocalStorage() {
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('diggy_')) {
+      keysToRemove.push(key);
+    }
+  }
+  
+  keysToRemove.forEach(key => {
+    localStorage.removeItem(key);
+  });
+  
+  console.log(`Cleared ${keysToRemove.length} localStorage items starting with 'diggy_'`);
+  console.log('Cleared keys:', keysToRemove);
+  
+  return keysToRemove;
 }
 
 export async function updateGameDetails(gameId, updatedData) {
