@@ -15,6 +15,7 @@ import {
   directPublishGame, 
   getActiveGames, 
   updateAndResubmitGameRequest,
+  updateGameDetails,
   recordGamePlay,
   rateGame,
   submitGameVersionRequest,
@@ -2266,7 +2267,10 @@ async function renderGameDetails(gameId) {
       <div class="game-screen-panel">
         <div class="game-screen-header">
           <h2 style="font-size: 20px; color: var(--accent-color);">${game.name}</h2>
-          <span style="font-size: 13px; color: var(--text-muted); font-family: var(--font-display);" id="game-score-display">Score: 0</span>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <span style="font-size: 13px; color: var(--text-muted); font-family: var(--font-display);" id="game-score-display">Score: 0</span>
+            <button class="btn btn-secondary" id="enlarge-game-btn" style="padding: 4px 10px; font-size: 12px;"><i class="fas fa-expand"></i> Enlarge</button>
+          </div>
         </div>
         <div class="game-canvas-container">
           <div class="game-menu-overlay" id="game-menu-overlay">
@@ -2319,6 +2323,54 @@ async function renderGameDetails(gameId) {
           <span class="game-meta-label">Game Description</span>
           <p style="font-size: 13px; line-height: 1.5; color: var(--text-muted);">${game.description}</p>
         </div>
+
+        ${state.user && (state.user.role === 'admin' || state.user.uid === game.developerUid) ? `
+          <hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.05);">
+          <div class="game-meta-item">
+            <button class="btn btn-secondary" id="edit-game-btn" style="width: 100%;"><i class="fas fa-edit"></i> Edit Game Details</button>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+
+    <!-- Edit Game Modal -->
+    <div id="edit-game-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center;">
+      <div style="background: var(--bg-card); border: 1px solid var(--accent-color); border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <h3 style="color: var(--accent-color); margin-bottom: 20px;">Edit Game Details</h3>
+        <form id="edit-game-form">
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">Game Name</label>
+            <input type="text" id="edit-game-name" value="${game.name}" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">Description</label>
+            <textarea id="edit-game-description" rows="3" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">${game.description}</textarea>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">Logo URL</label>
+            <input type="text" id="edit-game-logo" value="${game.logoUrl}" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">Game URL</label>
+            <input type="text" id="edit-game-url" value="${game.gameUrl || ''}" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">GitHub URL</label>
+            <input type="text" id="edit-game-github" value="${game.githubUrl}" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">How to Play</label>
+            <textarea id="edit-game-how" rows="2" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">${game.howToPlay}</textarea>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">Target Audience</label>
+            <input type="text" id="edit-game-audience" value="${game.targetAudience}" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">
+          </div>
+          <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="fas fa-save"></i> Save Changes</button>
+            <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="flex: 1;">Cancel</button>
+          </div>
+        </form>
       </div>
     </div>
   `;
@@ -2357,7 +2409,97 @@ async function renderGameDetails(gameId) {
     }
   });
 
+  // Bind Enlarge Button
+  const enlargeBtn = document.getElementById('enlarge-game-btn');
+  if (enlargeBtn) {
+    enlargeBtn.addEventListener('click', () => {
+      const gameScreenPanel = document.querySelector('.game-screen-panel');
+      const gameSidebarPanel = document.querySelector('.game-sidebar-panel');
+      
+      if (gameScreenPanel.style.position === 'fixed') {
+        // Restore normal view
+        gameScreenPanel.style.position = '';
+        gameScreenPanel.style.top = '';
+        gameScreenPanel.style.left = '';
+        gameScreenPanel.style.width = '';
+        gameScreenPanel.style.height = '';
+        gameScreenPanel.style.zIndex = '';
+        gameScreenPanel.style.background = '';
+        gameSidebarPanel.style.display = '';
+        enlargeBtn.innerHTML = '<i class="fas fa-expand"></i> Enlarge';
+      } else {
+        // Enlarge to fullscreen
+        gameScreenPanel.style.position = 'fixed';
+        gameScreenPanel.style.top = '0';
+        gameScreenPanel.style.left = '0';
+        gameScreenPanel.style.width = '100vw';
+        gameScreenPanel.style.height = '100vh';
+        gameScreenPanel.style.zIndex = '9999';
+        gameScreenPanel.style.background = '#07080a';
+        gameSidebarPanel.style.display = 'none';
+        enlargeBtn.innerHTML = '<i class="fas fa-compress"></i> Shrink';
+      }
+    });
+  }
+
   setupGameRatingUI(gameId);
+
+  // Bind Edit Game Button
+  const editBtn = document.getElementById('edit-game-btn');
+  const editModal = document.getElementById('edit-game-modal');
+  const cancelEditBtn = document.getElementById('cancel-edit-btn');
+  const editForm = document.getElementById('edit-game-form');
+
+  if (editBtn && editModal) {
+    editBtn.addEventListener('click', () => {
+      editModal.style.display = 'flex';
+    });
+
+    cancelEditBtn.addEventListener('click', () => {
+      editModal.style.display = 'none';
+    });
+
+    editModal.addEventListener('click', (e) => {
+      if (e.target === editModal) {
+        editModal.style.display = 'none';
+      }
+    });
+
+    editForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      showLoader(true);
+      try {
+        const updatedData = {
+          name: document.getElementById('edit-game-name').value.trim(),
+          description: document.getElementById('edit-game-description').value.trim(),
+          logoUrl: document.getElementById('edit-game-logo').value.trim(),
+          gameUrl: document.getElementById('edit-game-url').value.trim(),
+          githubUrl: document.getElementById('edit-game-github').value.trim(),
+          howToPlay: document.getElementById('edit-game-how').value.trim(),
+          targetAudience: document.getElementById('edit-game-audience').value.trim()
+        };
+
+        await updateGameDetails(gameId, updatedData);
+        
+        // Update local state
+        const idx = state.games.findIndex(g => g.id === gameId);
+        if (idx !== -1) {
+          state.games[idx] = { ...state.games[idx], ...updatedData };
+        }
+        
+        editModal.style.display = 'none';
+        showToast('Game details updated successfully!', 'success');
+        
+        // Re-render the game details page
+        await renderGameDetails(gameId);
+      } catch (err) {
+        showToast('Failed to update game details: ' + err.message, 'danger');
+      } finally {
+        showLoader(false);
+      }
+    });
+  }
 }
 
 // 1. NEON SNAKE GAME

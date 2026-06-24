@@ -912,7 +912,11 @@ export async function directPublishGame(gameData) {
 export async function getActiveGames() {
   if (firebaseLoaded && !fallbackMode) {
     try {
-      const q = firebaseFirestore.query(firebaseFirestore.collection(db, "games"), firebaseFirestore.orderBy("createdAt", "desc"));
+      const q = firebaseFirestore.query(
+        firebaseFirestore.collection(db, "games"), 
+        firebaseFirestore.where("approved", "==", true),
+        firebaseFirestore.orderBy("createdAt", "desc")
+      );
       const snap = await firebaseFirestore.getDocs(q);
       const list = [];
       snap.forEach(d => list.push({ id: d.id, ...d.data() }));
@@ -922,7 +926,37 @@ export async function getActiveGames() {
     }
   }
 
-  return getLocalStorageData('games');
+  return getLocalStorageData('games').filter(g => g.approved === true);
+}
+
+export async function updateGameDetails(gameId, updatedData) {
+  // Update locally
+  const games = getLocalStorageData('games');
+  const idx = games.findIndex(g => g.id === gameId);
+  
+  if (idx !== -1) {
+    games[idx] = { ...games[idx], ...updatedData };
+    saveLocalStorageData('games', games);
+  } else {
+    throw new Error("Game not found");
+  }
+
+  // Update in Firebase
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const ref = firebaseFirestore.collection(db, "games");
+      const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
+      const snap = await firebaseFirestore.getDocs(q);
+      if (!snap.empty) {
+        const docId = snap.docs[0].id;
+        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", docId), updatedData);
+      }
+    } catch (e) {
+      console.warn("Firebase game update failed, updated locally:", e);
+    }
+  }
+
+  return games[idx];
 }
 
 // --- TWO-FACTOR AUTHENTICATION ---
