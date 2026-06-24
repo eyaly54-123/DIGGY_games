@@ -1202,6 +1202,26 @@ export function setEmailJSConfig(serviceId, templateId, publicKey, fromName, fro
   localStorage.setItem('diggy_emailjs_public_key', normalizedPublicKey);
   localStorage.setItem('diggy_emailjs_from_name', normalizedFromName || 'DIGGY Games');
   localStorage.setItem('diggy_emailjs_from_email', normalizedFromEmail || 'noreply@diggy-games.com');
+  
+  // Sync to Firebase
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const configRef = firebaseFirestore.doc(db, "site_config", "emailjs_config");
+      firebaseFirestore.setDoc(configRef, {
+        serviceId: normalizedServiceId,
+        templateId: normalizedTemplateId,
+        publicKey: normalizedPublicKey,
+        fromName: normalizedFromName || 'DIGGY Games',
+        fromEmail: normalizedFromEmail || 'noreply@diggy-games.com',
+        updatedAt: new Date().toISOString()
+      }).catch(e => {
+        console.warn("Firebase EmailJS config sync failed:", e);
+      });
+    } catch (e) {
+      console.warn("Firebase EmailJS config sync failed:", e);
+    }
+  }
+  
   return getEmailJSSettings();
 }
 

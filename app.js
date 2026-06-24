@@ -148,6 +148,22 @@ function saveUserRating(gameId, score) {
   if (!store[userKey]) store[userKey] = {};
   store[userKey][gameId] = score;
   localStorage.setItem('diggy_game_ratings', JSON.stringify(store));
+  
+  // Sync to Firebase
+  if (state.user?.uid) {
+    import('./firebase-service.js').then(mod => {
+      if (mod.firebaseLoaded && !mod.fallbackMode) {
+        try {
+          const ratingsRef = mod.firebaseFirestore.doc(mod.db, "user_ratings", state.user.uid);
+          mod.firebaseFirestore.setDoc(ratingsRef, { ratings: store[state.user.uid], updatedAt: new Date().toISOString() }).catch(e => {
+            console.warn("Firebase user ratings sync failed:", e);
+          });
+        } catch (e) {
+          console.warn("Firebase user ratings sync failed:", e);
+        }
+      }
+    });
+  }
 }
 
 function getUserRatingForGame(gameId) {
@@ -185,11 +201,40 @@ function saveSiteEmailSettings(settings) {
   const current = getSiteEmailSettings();
   const merged = { ...current, ...settings };
   localStorage.setItem('diggy_email_settings', JSON.stringify(merged));
+  
+  // Sync to Firebase
+  import('./firebase-service.js').then(mod => {
+    if (mod.firebaseLoaded && !mod.fallbackMode) {
+      try {
+        const configRef = mod.firebaseFirestore.doc(mod.db, "site_config", "email_settings");
+        mod.firebaseFirestore.setDoc(configRef, { ...merged, updatedAt: new Date().toISOString() }).catch(e => {
+          console.warn("Firebase email settings sync failed:", e);
+        });
+      } catch (e) {
+        console.warn("Firebase email settings sync failed:", e);
+      }
+    }
+  });
+  
   return merged;
 }
 
 function saveSupportThreads(threads) {
   localStorage.setItem('diggy_support_threads', JSON.stringify(threads));
+  
+  // Sync to Firebase
+  import('./firebase-service.js').then(mod => {
+    if (mod.firebaseLoaded && !mod.fallbackMode) {
+      try {
+        const configRef = mod.firebaseFirestore.doc(mod.db, "site_config", "support_threads");
+        mod.firebaseFirestore.setDoc(configRef, { threads, updatedAt: new Date().toISOString() }).catch(e => {
+          console.warn("Firebase support threads sync failed:", e);
+        });
+      } catch (e) {
+        console.warn("Firebase support threads sync failed:", e);
+      }
+    }
+  });
 }
 
 function createSupportThread({ name, email, subject, message }) {
@@ -1884,6 +1929,20 @@ async function renderAdmin() {
       });
       if (adminEmail) {
         localStorage.setItem('diggy_support_admin_email', adminEmail);
+        
+        // Sync to Firebase
+        import('./firebase-service.js').then(mod => {
+          if (mod.firebaseLoaded && !mod.fallbackMode) {
+            try {
+              const configRef = mod.firebaseFirestore.doc(mod.db, "site_config", "admin_email");
+              mod.firebaseFirestore.setDoc(configRef, { adminEmail, updatedAt: new Date().toISOString() }).catch(e => {
+                console.warn("Firebase admin email sync failed:", e);
+              });
+            } catch (e) {
+              console.warn("Firebase admin email sync failed:", e);
+            }
+          }
+        });
       }
       showToast('EmailJS and email settings saved.', 'success');
     });
@@ -3114,6 +3173,46 @@ export function renderSettings() {
           </div>
         </div>
       </div>
+
+      <!-- EmailJS Configuration (Admin only) -->
+      ${state.user.role === 'admin' ? `
+      <div class="settings-card" style="flex: 1; min-width: 320px; max-width: 100%;">
+        <div class="settings-card-header">
+          <h2 class="settings-card-title">Email Configuration (EmailJS)</h2>
+        </div>
+        <div class="modal-body">
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
+            Configure EmailJS to send real emails. Get your credentials from <a href="https://dashboard.emailjs.com/admin/account" target="_blank" style="color: var(--accent-color);">EmailJS Dashboard</a>
+          </p>
+          <div class="form-group">
+            <label>Service ID</label>
+            <input type="text" id="emailjs-service-id" placeholder="service_xxxxxx">
+          </div>
+          <div class="form-group">
+            <label>Template ID</label>
+            <input type="text" id="emailjs-template-id" placeholder="template_xxxxxx">
+          </div>
+          <div class="form-group">
+            <label>Public Key</label>
+            <input type="text" id="emailjs-public-key" placeholder="xxxxxxxxxxxxx">
+          </div>
+          <div class="form-group">
+            <label>From Name</label>
+            <input type="text" id="emailjs-from-name" placeholder="DIGGY Games">
+          </div>
+          <div class="form-group">
+            <label>From Email</label>
+            <input type="email" id="emailjs-from-email" placeholder="noreply@diggy-games.com">
+          </div>
+          <button class="btn btn-primary" id="save-emailjs-btn" style="width: 100%; justify-content: center; margin-top: 10px;">
+            <i class="fas fa-save"></i> Save Email Configuration
+          </button>
+          <button class="btn btn-secondary" id="test-emailjs-btn" style="width: 100%; justify-content: center; margin-top: 10px;">
+            <i class="fas fa-paper-plane"></i> Send Test Email
+          </button>
+        </div>
+      </div>
+      ` : ''}
     </div>
 
     <!-- Become a Developer Application Form (If player role) -->
@@ -3320,6 +3419,25 @@ export function renderSettings() {
         localStorage.setItem('diggy_bio_username', state.user.username);
         localStorage.setItem('diggy_bio_uid', state.user.uid);
         
+        // Sync to Firebase
+        import('./firebase-service.js').then(mod => {
+          if (mod.firebaseLoaded && !mod.fallbackMode) {
+            try {
+              const bioRef = mod.firebaseFirestore.doc(mod.db, "webauthn_credentials", state.user.uid);
+              mod.firebaseFirestore.setDoc(bioRef, { 
+                username: state.user.username,
+                uid: state.user.uid,
+                credentialId: result.credentialId.join(','),
+                updatedAt: new Date().toISOString()
+              }).catch(e => {
+                console.warn("Firebase WebAuthn sync failed:", e);
+              });
+            } catch (e) {
+              console.warn("Firebase WebAuthn sync failed:", e);
+            }
+          }
+        });
+        
         await updateUserProfile(state.user.uid, { 
           biometricsEnabled: true, 
           biometricsCredentialId: result.credentialId.join(',') 
@@ -3336,6 +3454,70 @@ export function renderSettings() {
       showLoader(false);
     }
   });
+
+  // EmailJS Configuration (Admin only)
+  if (state.user.role === 'admin') {
+    const currentConfig = getResendConfigState();
+    
+    // Pre-fill current values
+    document.getElementById('emailjs-service-id').value = currentConfig.serviceId || '';
+    document.getElementById('emailjs-template-id').value = currentConfig.templateId || '';
+    document.getElementById('emailjs-public-key').value = currentConfig.publicKey || '';
+    document.getElementById('emailjs-from-name').value = currentConfig.fromName || '';
+    document.getElementById('emailjs-from-email').value = currentConfig.fromEmail || '';
+
+    // Save EmailJS configuration
+    document.getElementById('save-emailjs-btn').addEventListener('click', async () => {
+      const serviceId = document.getElementById('emailjs-service-id').value.trim();
+      const templateId = document.getElementById('emailjs-template-id').value.trim();
+      const publicKey = document.getElementById('emailjs-public-key').value.trim();
+      const fromName = document.getElementById('emailjs-from-name').value.trim();
+      const fromEmail = document.getElementById('emailjs-from-email').value.trim();
+
+      if (!serviceId || !templateId || !publicKey) {
+        showToast('Service ID, Template ID, and Public Key are required', 'danger');
+        return;
+      }
+
+      showLoader(true);
+      try {
+        setResendConfig(serviceId, templateId, publicKey, fromName, fromEmail);
+        showToast('EmailJS configuration saved successfully!', 'success');
+      } catch (e) {
+        showToast('Failed to save configuration: ' + e.message, 'danger');
+      } finally {
+        showLoader(false);
+      }
+    });
+
+    // Test EmailJS configuration
+    document.getElementById('test-emailjs-btn').addEventListener('click', async () => {
+      const testEmail = state.user.email || state.user.supportEmail || 'test@example.com';
+      
+      showLoader(true);
+      try {
+        const html = `
+          <div style="font-family: sans-serif; background: #07080a; color: white; padding: 24px; border-radius: 12px; border: 2px solid #00ff66;">
+            <h1 style="color: #00ff66;">DIGGY Email Test</h1>
+            <p>This is a test email from DIGGY Games platform.</p>
+            <p>If you received this email, your EmailJS configuration is working correctly!</p>
+          </div>
+        `;
+        
+        const result = await sendEmailViaResend(testEmail, 'DIGGY - Email Configuration Test', html);
+        
+        if (result.success) {
+          showToast('Test email sent successfully! Check your inbox.', 'success');
+        } else {
+          showToast('Failed to send test email: ' + (result.error || 'Unknown error'), 'danger');
+        }
+      } catch (e) {
+        showToast('Error sending test email: ' + e.message, 'danger');
+      } finally {
+        showLoader(false);
+      }
+    });
+  }
 
   // Become Developer Application Form Submit
   const devAppForm = document.getElementById('dev-application-form');
