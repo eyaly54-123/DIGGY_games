@@ -1174,18 +1174,18 @@ export const simulatedEmails = [];
 
 function getEmailJSSettings() {
   const globalScope = typeof window !== 'undefined' ? window : null;
-  const serviceId = (localStorage.getItem('diggy_emailjs_service_id') || globalScope?.__DIGGY_EMAILJS_SERVICE_ID__ || '').trim();
-  const templateId = (localStorage.getItem('diggy_emailjs_template_id') || globalScope?.__DIGGY_EMAILJS_TEMPLATE_ID__ || '').trim();
-  const publicKey = (localStorage.getItem('diggy_emailjs_public_key') || globalScope?.__DIGGY_EMAILJS_PUBLIC_KEY__ || '').trim();
+  const serviceId = (localStorage.getItem('diggy_emailjs_service_id') || globalScope?.__DIGGY_EMAILJS_SERVICE_ID__ || 'service_i8bvc3q').trim();
+  const templateId = (localStorage.getItem('diggy_emailjs_template_id') || globalScope?.__DIGGY_EMAILJS_TEMPLATE_ID__ || 'template_m0ljxqg').trim();
+  const publicKey = (localStorage.getItem('diggy_emailjs_public_key') || globalScope?.__DIGGY_EMAILJS_PUBLIC_KEY__ || 'dzZsE1BZxybKa-hbH').trim();
   const fromName = (localStorage.getItem('diggy_emailjs_from_name') || globalScope?.__DIGGY_EMAILJS_FROM_NAME__ || 'DIGGY Games').trim();
-  const fromEmail = (localStorage.getItem('diggy_emailjs_from_email') || globalScope?.__DIGGY_EMAILJS_FROM_EMAIL__ || 'noreply@diggy-games.com').trim();
+  const fromEmail = (localStorage.getItem('diggy_emailjs_from_email') || globalScope?.__DIGGY_EMAILJS_FROM_EMAIL__ || 'diggy-games@outlook.com').trim();
 
   return {
     serviceId,
     templateId,
     publicKey,
     fromName: fromName || 'DIGGY Games',
-    fromEmail: fromEmail || 'noreply@diggy-games.com',
+    fromEmail: fromEmail || 'diggy-games@outlook.com',
     enabled: Boolean(serviceId && templateId && publicKey)
   };
 }
