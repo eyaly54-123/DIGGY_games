@@ -38,7 +38,9 @@ import {
   validateEmail,
   sendEmailViaResend,
   setResendConfig,
-  getResendConfigState
+  getResendConfigState,
+  isPrivilegedRole,
+  getPrivilegedAccountRequirements
 } from './firebase-service.js';
 
 // --- PLATFORM STATE ---
@@ -163,16 +165,16 @@ function getSupportThreads() {
 function getSiteEmailSettings() {
   try {
     return {
-      supportEmail: 'support@diggy-arena.com',
-      legalEmail: 'legal@diggy-arena.com',
-      notificationEmail: 'support@diggy-arena.com',
+      supportEmail: 'diggy-games@outlook.com',
+      legalEmail: 'diggy-games@outlook.com',
+      notificationEmail: 'diggy-games@outlook.com',
       ...JSON.parse(localStorage.getItem('diggy_email_settings') || '{}')
     };
   } catch {
     return {
-      supportEmail: 'support@diggy-arena.com',
-      legalEmail: 'legal@diggy-arena.com',
-      notificationEmail: 'support@diggy-arena.com'
+      supportEmail: 'diggy-games@outlook.com',
+      legalEmail: 'diggy-games@outlook.com',
+      notificationEmail: 'diggy-games@outlook.com'
     };
   }
 }
@@ -1140,6 +1142,14 @@ function renderLogin() {
         // Clear login attempts on successful login
         clearLoginAttempts(username);
         
+        const requirementStatus = getPrivilegedAccountRequirements(profile);
+        if (requirementStatus.required && !requirementStatus.complete) {
+          showLoader(false);
+          showToast("לפני הכניסה למערכת עליך להשלים הגדרות אבטחה: אימות דו-שלבי וכתובת תמיכה.", "danger");
+          navigateTo('#/settings');
+          return;
+        }
+
         // Check 2FA
         if (profile.twoFactorEnabled) {
           showLoader(false);
@@ -1761,7 +1771,7 @@ async function renderAdmin() {
     <div class="data-table-container" style="padding: 20px;">
       <div class="form-group">
         <label>אימייל תמיכה</label>
-        <input type="email" id="site-support-email" value="${getSiteEmailSettings().supportEmail || ''}" placeholder="support@yourdomain.com">
+        <input type="email" id="site-support-email" value="${getSiteEmailSettings().supportEmail || 'diggy-games@outlook.com'}" placeholder="diggy-games@outlook.com">
       </div>
       <div class="form-group">
         <label>אימייל משפטי / DMCA</label>
@@ -1789,7 +1799,7 @@ async function renderAdmin() {
       </div>
       <div class="form-group">
         <label>כתובת תמיכה לאדמין</label>
-        <input type="email" id="support-admin-email" value="${localStorage.getItem('diggy_support_admin_email') || 'support@diggy-arena.com'}" placeholder="support@yourdomain.com">
+        <input type="email" id="support-admin-email" value="${localStorage.getItem('diggy_support_admin_email') || 'diggy-games@outlook.com'}" placeholder="diggy-games@outlook.com">
       </div>
       <button class="btn btn-primary" id="save-resend-config-btn" style="margin-top: 10px;"><i class="fas fa-save"></i> שמור הגדרות EmailJS</button>
       <p style="margin-top: 10px; color: var(--text-muted); font-size: 13px;">ב-EmailJS יש ליצור Service, Template עם שדות: to_email, subject, message, message_html, reply_to, from_name.</p>
@@ -2787,6 +2797,24 @@ export function renderSettings() {
     </div>
 
     <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+      ${(() => {
+        const requirementStatus = getPrivilegedAccountRequirements(state.user);
+        if (requirementStatus.required) {
+          return `
+            <div style="width: 100%; padding: 14px 16px; border-radius: 12px; background: ${requirementStatus.complete ? 'rgba(0,255,102,0.08)' : 'rgba(255,170,0,0.12)'}; border: 1px solid ${requirementStatus.complete ? 'rgba(0,255,102,0.25)' : 'rgba(255,170,0,0.25)'}; margin-bottom: 20px;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <i class="fas ${requirementStatus.complete ? 'fa-shield-alt' : 'fa-exclamation-triangle'}" style="color: ${requirementStatus.complete ? 'var(--accent-color)' : '#ffaa00'};"></i>
+                <strong style="font-size: 14px;">${requirementStatus.complete ? 'החשבון מוכן לשימוש' : 'נדרשות הגדרות אבטחה לפיתוח/ניהול'}</strong>
+              </div>
+              <div style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+                ${requirementStatus.complete ? 'כל הדרישות הושלמו ותוכל להמשיך לעבוד עם החשבון.' : `לפני המשך העבודה יש להשלים:${requirementStatus.missingItems.includes('twoFactor') ? '<br>• הפעלת אימות דו-שלבי' : ''}${requirementStatus.missingItems.includes('supportEmail') ? '<br>• הזנת כתובת תמיכה פנימית' : ''}`}
+              </div>
+            </div>
+          `;
+        }
+        return '';
+      })()}
+
       <!-- Profile settings card -->
       <div class="settings-card" style="flex: 1; min-width: 320px; max-width: 500px;">
         <div class="settings-card-header">
@@ -2833,7 +2861,7 @@ export function renderSettings() {
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
                 <strong style="display: block; font-size: 14px;">אימות דו-שלבי במייל (2FA)</strong>
-                <span style="font-size: 12px; color: var(--text-muted);">שלח קוד אבטחה ביומטרי בכל חיבור</span>
+                <span style="font-size: 12px; color: var(--text-muted);">שלח קוד אבטחה בכל חיבור</span>
               </div>
               <input type="checkbox" id="settings-2fa-toggle" ${state.user.twoFactorEnabled ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color); cursor: pointer;">
             </div>
@@ -2844,6 +2872,15 @@ export function renderSettings() {
                 <input type="email" id="settings-2fa-email" value="${state.user.twoFactorEmail || ''}" placeholder="myemail@example.com">
               </div>
             </div>
+
+            ${isPrivilegedRole(state.user.role) ? `
+              <div style="margin-top: 15px;">
+                <div class="form-group">
+                  <label>כתובת תמיכה פנימית (למפתח/Admin)</label>
+                  <input type="email" id="settings-support-email" value="${state.user.supportEmail || ''}" placeholder="support@yourdomain.com">
+                </div>
+              </div>
+            ` : ''}
           </div>
 
           <!-- Biometric setup -->
@@ -2970,6 +3007,13 @@ export function renderSettings() {
     group2fa.style.display = enabled ? 'block' : 'none';
     
     if (!enabled) {
+      if (isPrivilegedRole(state.user.role)) {
+        toggle2fa.checked = true;
+        group2fa.style.display = 'block';
+        showToast("למשתמשי מפתח/Admin חובה להפעיל אימות דו-שלבי.", "danger");
+        return;
+      }
+
       showLoader(true);
       await updateUserProfile(state.user.uid, { twoFactorEnabled: false });
       state.user.twoFactorEnabled = false;
@@ -2982,24 +3026,50 @@ export function renderSettings() {
   const input2faEmail = document.getElementById('settings-2fa-email');
   input2faEmail.addEventListener('change', async () => {
     const val = sanitizeInput(input2faEmail.value.trim());
-    if (val) {
+    if (!val) {
+      showToast("יש להזין כתובת אימייל לשליחת הקוד", "danger");
+      return;
+    }
+
+    const emailValidation = validateEmail(val);
+    if (!emailValidation.valid) {
+      showToast(emailValidation.error, "danger");
+      return;
+    }
+    
+    showLoader(true);
+    await updateUserProfile(state.user.uid, { 
+      twoFactorEnabled: true, 
+      twoFactorEmail: val 
+    });
+    state.user.twoFactorEnabled = true;
+    state.user.twoFactorEmail = val;
+    showToast("כתובת אימות דו-שלבי עודכנה!", "success");
+    showLoader(false);
+  });
+
+  const inputSupportEmail = document.getElementById('settings-support-email');
+  if (inputSupportEmail) {
+    inputSupportEmail.addEventListener('change', async () => {
+      const val = sanitizeInput(inputSupportEmail.value.trim());
+      if (!val) {
+        showToast("יש להזין כתובת תמיכה פנימית", "danger");
+        return;
+      }
+
       const emailValidation = validateEmail(val);
       if (!emailValidation.valid) {
         showToast(emailValidation.error, "danger");
         return;
       }
-      
+
       showLoader(true);
-      await updateUserProfile(state.user.uid, { 
-        twoFactorEnabled: true, 
-        twoFactorEmail: val 
-      });
-      state.user.twoFactorEnabled = true;
-      state.user.twoFactorEmail = val;
-      showToast("כתובת אימות דו-שלבי עודכנה!", "success");
+      await updateUserProfile(state.user.uid, { supportEmail: val });
+      state.user.supportEmail = val;
+      showToast("כתובת התמיכה נשמרה בהצלחה!", "success");
       showLoader(false);
-    }
-  });
+    });
+  }
 
   // Theme color picking
   document.querySelectorAll('.color-picker-btn').forEach(btn => {
@@ -3484,7 +3554,7 @@ async function renderContact() {
     <div class="legal-page-content">
       <div class="doc-section">
         <h3><i class="fas fa-envelope" style="color: var(--accent-color);"></i> יצירת קשר כללית</h3>
-        <p>לשאלות, הצעות ותמיכה: <strong>${getSiteEmailSettings().supportEmail || 'support@diggy-arena.com'}</strong></p>
+        <p>לשאלות, הצעות ותמיכה: <strong>${getSiteEmailSettings().supportEmail || 'diggy-games@outlook.com'}</strong></p>
       </div>
 
       <div class="doc-section" style="background: rgba(0,255,102,0.06); border: 1px solid rgba(0,255,102,0.16); border-radius: 12px; padding: 20px;">
@@ -3508,7 +3578,7 @@ async function renderContact() {
           <li>קישור לדף המשחק או התוכן הרלוונטי ב-DIGGY</li>
           <li>הצהרה שהשימוש אינו מורשה</li>
         </ul>
-        <p>שלחו ל: <strong>${getSiteEmailSettings().legalEmail || 'legal@diggy-arena.com'}</strong> — נטפל בפניה תוך 48 שעות עסקיות.</p>
+        <p>שלחו ל: <strong>${getSiteEmailSettings().legalEmail || 'diggy-games@outlook.com'}</strong> — נטפל בפניה תוך 48 שעות עסקיות.</p>
       </div>
       <div class="doc-section">
         <h3>קישורים מהירים</h3>
@@ -3538,7 +3608,7 @@ async function renderContact() {
       showLoader(true);
       try {
         const thread = createSupportThread({ name, email, subject, message });
-        const adminEmail = getSiteEmailSettings().supportEmail || localStorage.getItem('diggy_support_admin_email') || 'support@diggy-arena.com';
+        const adminEmail = getSiteEmailSettings().supportEmail || localStorage.getItem('diggy_support_admin_email') || 'diggy-games@outlook.com';
         const adminHtml = `
           <div style="font-family: sans-serif; background: #07080a; color: white; padding: 24px; border-radius: 12px; border: 1px solid #00ff66;">
             <h2 style="color: #00ff66;">פנייה חדשה לתמיכה - DIGGY</h2>

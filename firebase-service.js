@@ -192,6 +192,26 @@ export function validateEmail(email) {
   };
 }
 
+export function isPrivilegedRole(role) {
+  return role === 'developer' || role === 'admin';
+}
+
+export function getPrivilegedAccountRequirements(profile) {
+  if (!profile || !isPrivilegedRole(profile.role)) {
+    return { required: false, complete: true, missingItems: [] };
+  }
+
+  const missingItems = [];
+  if (!profile.twoFactorEnabled) missingItems.push('twoFactor');
+  if (!profile.supportEmail || !validateEmail(profile.supportEmail).valid) missingItems.push('supportEmail');
+
+  return {
+    required: true,
+    complete: missingItems.length === 0,
+    missingItems
+  };
+}
+
 // --- LOCAL STORAGE MOCK DATABASE IMPLEMENTATION ---
 
 function getLocalStorageData(key) {
@@ -234,6 +254,7 @@ if (getLocalStorageData('users').length === 0) {
       role: "admin",
       twoFactorEnabled: false,
       twoFactorEmail: "",
+      supportEmail: "",
       biometricsEnabled: false,
       customTheme: "#00ff66",
       favorites: [],
@@ -247,6 +268,7 @@ if (getLocalStorageData('users').length === 0) {
       role: "developer",
       twoFactorEnabled: false,
       twoFactorEmail: "",
+      supportEmail: "",
       biometricsEnabled: false,
       customTheme: "#00ffff",
       favorites: ["preset_snake"],
@@ -260,6 +282,7 @@ if (getLocalStorageData('users').length === 0) {
       role: "player",
       twoFactorEnabled: false,
       twoFactorEmail: "",
+      supportEmail: "",
       biometricsEnabled: false,
       customTheme: "#ff3366",
       favorites: [],
@@ -302,6 +325,7 @@ export async function signUpUser(username, password) {
     role: cleanUsername.toLowerCase() === 'admin' ? 'admin' : 'player', // Auto-promote 'admin' username for ease of testing
     twoFactorEnabled: false,
     twoFactorEmail: "",
+    supportEmail: "",
     biometricsEnabled: false,
     biometricsCredential: null,
     customTheme: '#00ff66',
@@ -818,7 +842,7 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
   if (requestData) {
     try {
       const devProfile = await getUserProfile(requestData.developerUid);
-      const emailToUse = devProfile.twoFactorEmail || devProfile.email || 'developer@diggy.com';
+      const emailToUse = devProfile.supportEmail || devProfile.twoFactorEmail || devProfile.email || 'diggy-games@outlook.com';
       await sendStatusEmail(emailToUse, requestData.developerName, `Game Submission: ${requestData.name}`, status, adminSuggestions);
     } catch (err) {
       console.warn("Failed to send notification email:", err);
