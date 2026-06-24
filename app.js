@@ -1493,6 +1493,18 @@ function openGameSubmitModal(editData = null) {
           <label class="category-checkbox-label">
             <input type="checkbox" name="game-cats" value="MULTIPLAYER" ${editData && editData.categories.includes('MULTIPLAYER') ? 'checked' : ''}> MULTIPLAYER
           </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="game-cats" value="ACTION" ${editData && editData.categories.includes('ACTION') ? 'checked' : ''}> ACTION
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="game-cats" value="PUZZLE" ${editData && editData.categories.includes('PUZZLE') ? 'checked' : ''}> PUZZLE
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="game-cats" value="ADVENTURE" ${editData && editData.categories.includes('ADVENTURE') ? 'checked' : ''}> ADVENTURE
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="game-cats" value="SPORTS" ${editData && editData.categories.includes('SPORTS') ? 'checked' : ''}> SPORTS
+          </label>
         </div>
       </div>
       <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 15px;">
@@ -1504,6 +1516,14 @@ function openGameSubmitModal(editData = null) {
   overlay.classList.add('active');
 
   const form = document.getElementById('game-submit-form');
+  const gameCatBoxes = form.querySelectorAll('input[name="game-cats"]');
+  gameCatBoxes.forEach(box => {
+    box.addEventListener('change', () => {
+      const checkedCount = form.querySelectorAll('input[name="game-cats"]:checked').length;
+      gameCatBoxes.forEach(b => { if (!b.checked) b.disabled = checkedCount >= 3; });
+    });
+  });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -2140,6 +2160,18 @@ function openAdminDirectUploadModal() {
           <label class="category-checkbox-label">
             <input type="checkbox" name="direct-cats" value="MULTIPLAYER"> MULTIPLAYER
           </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="direct-cats" value="ACTION"> ACTION
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="direct-cats" value="PUZZLE"> PUZZLE
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="direct-cats" value="ADVENTURE"> ADVENTURE
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="direct-cats" value="SPORTS"> SPORTS
+          </label>
         </div>
       </div>
       <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 15px;">
@@ -2151,12 +2183,24 @@ function openAdminDirectUploadModal() {
   overlay.classList.add('active');
 
   const form = document.getElementById('admin-direct-upload-form');
+  const directCatBoxes = form.querySelectorAll('input[name="direct-cats"]');
+  directCatBoxes.forEach(box => {
+    box.addEventListener('change', () => {
+      const checkedCount = form.querySelectorAll('input[name="direct-cats"]:checked').length;
+      directCatBoxes.forEach(b => { if (!b.checked) b.disabled = checkedCount >= 3; });
+    });
+  });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const checkedBoxes = form.querySelectorAll('input[name="direct-cats"]:checked');
     if (checkedBoxes.length === 0) {
       showToast("בחר לפחות קטגוריה אחת!", "warning");
+      return;
+    }
+    if (checkedBoxes.length > 3) {
+      showToast("ניתן לבחור עד 3 קטגוריות בלבד!", "warning");
       return;
     }
     const categories = Array.from(checkedBoxes).map(cb => cb.value);
