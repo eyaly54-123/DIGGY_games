@@ -1178,31 +1178,35 @@ function getEmailJSSettings() {
   const templateId = (localStorage.getItem('diggy_emailjs_template_id') || globalScope?.__DIGGY_EMAILJS_TEMPLATE_ID__ || '').trim();
   const publicKey = (localStorage.getItem('diggy_emailjs_public_key') || globalScope?.__DIGGY_EMAILJS_PUBLIC_KEY__ || '').trim();
   const fromName = (localStorage.getItem('diggy_emailjs_from_name') || globalScope?.__DIGGY_EMAILJS_FROM_NAME__ || 'DIGGY Games').trim();
+  const fromEmail = (localStorage.getItem('diggy_emailjs_from_email') || globalScope?.__DIGGY_EMAILJS_FROM_EMAIL__ || 'noreply@diggy-games.com').trim();
 
   return {
     serviceId,
     templateId,
     publicKey,
     fromName: fromName || 'DIGGY Games',
+    fromEmail: fromEmail || 'noreply@diggy-games.com',
     enabled: Boolean(serviceId && templateId && publicKey)
   };
 }
 
-export function setEmailJSConfig(serviceId, templateId, publicKey, fromName) {
+export function setEmailJSConfig(serviceId, templateId, publicKey, fromName, fromEmail) {
   const normalizedServiceId = (serviceId || '').trim();
   const normalizedTemplateId = (templateId || '').trim();
   const normalizedPublicKey = (publicKey || '').trim();
   const normalizedFromName = (fromName || '').trim();
+  const normalizedFromEmail = (fromEmail || '').trim();
 
   localStorage.setItem('diggy_emailjs_service_id', normalizedServiceId);
   localStorage.setItem('diggy_emailjs_template_id', normalizedTemplateId);
   localStorage.setItem('diggy_emailjs_public_key', normalizedPublicKey);
   localStorage.setItem('diggy_emailjs_from_name', normalizedFromName || 'DIGGY Games');
+  localStorage.setItem('diggy_emailjs_from_email', normalizedFromEmail || 'noreply@diggy-games.com');
   return getEmailJSSettings();
 }
 
-export function setResendConfig(serviceId, templateId, publicKey, fromName) {
-  return setEmailJSConfig(serviceId, templateId, publicKey, fromName);
+export function setResendConfig(serviceId, templateId, publicKey, fromName, fromEmail) {
+  return setEmailJSConfig(serviceId, templateId, publicKey, fromName, fromEmail);
 }
 
 export function getEmailJSConfigState() {
@@ -1250,7 +1254,9 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
           message_html: htmlContent,
           reply_to: recipientEmail,
           replyTo: recipientEmail,
-          from_name: emailJSSettings.fromName
+          from_name: emailJSSettings.fromName,
+          from_email: emailJSSettings.fromEmail,
+          fromEmail: emailJSSettings.fromEmail
         },
         {
           publicKey: emailJSSettings.publicKey
@@ -1391,9 +1397,12 @@ export async function submitGameVersionRequest(gameId, versionData) {
 }
 
 export async function rateGame(gameId, score) {
+  console.log(`Rating game ${gameId} with score ${score}`);
+  
   const games = getLocalStorageData('games');
   const idx = games.findIndex(g => g.id === gameId);
   let newRating = 5.0;
+  
   if (idx !== -1) {
     const currentSum = games[idx].ratingSum || 0;
     const currentCount = games[idx].ratingCount || 0;
@@ -1401,10 +1410,14 @@ export async function rateGame(gameId, score) {
     const nextCount = currentCount + 1;
     newRating = parseFloat((nextSum / nextCount).toFixed(1));
     
+    console.log(`Local rating update: sum=${currentSum} -> ${nextSum}, count=${currentCount} -> ${nextCount}, newRating=${newRating}`);
+    
     games[idx].ratingSum = nextSum;
     games[idx].ratingCount = nextCount;
     games[idx].rating = newRating;
     saveLocalStorageData('games', games);
+  } else {
+    console.warn(`Game ${gameId} not found in local storage`);
   }
 
   if (firebaseLoaded && !fallbackMode) {
@@ -1421,16 +1434,24 @@ export async function rateGame(gameId, score) {
         const nextCount = currentCount + 1;
         const avg = parseFloat((nextSum / nextCount).toFixed(1));
         
+        console.log(`Firebase rating update: sum=${currentSum} -> ${nextSum}, count=${currentCount} -> ${nextCount}, newRating=${avg}`);
+        
         await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", docId), {
           ratingSum: nextSum,
           ratingCount: nextCount,
           rating: avg
         });
+        console.log("Firebase rating update successful");
+      } else {
+        console.warn(`Game ${gameId} not found in Firebase`);
       }
     } catch (e) {
-      console.warn("Firebase rate game failed:", e);
+      console.error("Firebase rate game failed:", e);
     }
+  } else {
+    console.log("Firebase not connected, rating saved locally only");
   }
+  
   return newRating;
 }
 
