@@ -736,12 +736,17 @@ export async function getPendingGameRequests() {
   return getLocalStorageData('game_requests');
 }
 
-export async function handleGameRequest(requestId, status, adminSuggestions = "") {
+export async function handleGameRequest(requestId, status, adminSuggestions = "", requesterUid = null) {
   const requests = getLocalStorageData('game_requests');
   const idx = requests.findIndex(r => r.id === requestId);
   let requestData = null;
 
   if (idx !== -1) {
+    // Only allow the game creator (developer) to approve their own game
+    if (status === 'approved' && requesterUid && requestData.developerUid !== requesterUid) {
+      throw new Error('You can only approve your own game requests');
+    }
+    
     requests[idx].status = status;
     requests[idx].adminSuggestions = adminSuggestions;
     requestData = requests[idx];
@@ -1307,11 +1312,24 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
         status: error.status,
         text: error.text
       });
+      
+      // Provide helpful error messages
+      let errorMessage = error.message || 'Unknown error';
+      if (error.text && error.text.includes('Public Key is invalid')) {
+        errorMessage = 'Invalid EmailJS Public Key. Please check your EmailJS dashboard at https://dashboard.emailjs.com/admin/account and verify your public key is correct and your account is active.';
+      } else if (error.status === 400) {
+        errorMessage = `EmailJS configuration error (400): ${error.text || 'Bad Request'}. Please verify your Service ID, Template ID, and Public Key are correct.`;
+      } else if (error.status === 401) {
+        errorMessage = 'EmailJS authentication failed. Please check your Public Key.';
+      } else if (error.status === 403) {
+        errorMessage = 'EmailJS access forbidden. Your account may be suspended or you may have exceeded your quota.';
+      }
+      
       emailLog.status = 'failed';
-      emailLog.error = error.message;
+      emailLog.error = errorMessage;
       simulatedEmails.unshift(emailLog);
       window.dispatchEvent(new CustomEvent('diggy-email-sent', { detail: emailLog }));
-      return { success: false, mode: 'emailjs_failed', error: error.message, email: emailLog };
+      return { success: false, mode: 'emailjs_failed', error: errorMessage, email: emailLog };
     }
   } else {
     emailLog.status = 'simulated';

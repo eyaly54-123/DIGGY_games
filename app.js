@@ -2167,7 +2167,7 @@ function openAdminReasonModal(requestId, status, type) {
         await handleDeveloperRequest(requestId, status, reason);
         showToast("Developer request updated and email sent successfully!", "success");
       } else if (type === 'game') {
-        await handleGameRequest(requestId, status, reason);
+        await handleGameRequest(requestId, status, reason, state.user.uid);
         showToast("Game request updated and email sent successfully!", "success");
       }
       
@@ -2436,6 +2436,10 @@ async function renderGameDetails(gameId) {
             <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">Target Audience</label>
             <input type="text" id="edit-game-audience" value="${game.targetAudience}" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">
           </div>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; color: var(--text-muted); margin-bottom: 5px; font-size: 13px;">Categories (comma-separated)</label>
+            <input type="text" id="edit-game-categories" value="${(game.categories || []).join(', ')}" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">
+          </div>
           <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="fas fa-save"></i> Save Changes</button>
             <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="flex: 1;">Cancel</button>
@@ -2540,6 +2544,9 @@ async function renderGameDetails(gameId) {
       
       showLoader(true);
       try {
+        const categoriesInput = document.getElementById('edit-game-categories').value.trim();
+        const categories = categoriesInput ? categoriesInput.split(',').map(c => c.trim()).filter(c => c) : [];
+        
         const updatedData = {
           name: document.getElementById('edit-game-name').value.trim(),
           description: document.getElementById('edit-game-description').value.trim(),
@@ -2547,7 +2554,8 @@ async function renderGameDetails(gameId) {
           gameUrl: document.getElementById('edit-game-url').value.trim(),
           githubUrl: document.getElementById('edit-game-github').value.trim(),
           howToPlay: document.getElementById('edit-game-how').value.trim(),
-          targetAudience: document.getElementById('edit-game-audience').value.trim()
+          targetAudience: document.getElementById('edit-game-audience').value.trim(),
+          categories: categories
         };
 
         await updateGameDetails(gameId, updatedData);
