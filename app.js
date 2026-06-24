@@ -1150,7 +1150,7 @@ function renderLogin() {
           return;
         }
 
-        // Check 2FA
+        // Check 2FA2
         if (profile.twoFactorEnabled) {
           showLoader(false);
           trigger2FAFlow(profile);
