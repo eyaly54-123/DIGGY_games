@@ -18,6 +18,8 @@ import {
   updateGameDetails,
   recordGamePlay,
   rateGame,
+  debugLocalStorageGames,
+  removeGameByName,
   submitGameVersionRequest,
   simulatedEmails,
   onAuthStateListener,

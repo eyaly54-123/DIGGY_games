@@ -945,7 +945,48 @@ export async function getActiveGames() {
 
   const localGames = getLocalStorageData('games').filter(g => g.approved === true);
   console.log("Loaded games from local storage:", localGames.length);
+  
+  // Log all game names for debugging
+  console.log("All local games:", localGames.map(g => ({ id: g.id, name: g.name })));
+  
+  // Check for game named "123"
+  const game123 = localGames.find(g => g.name === '123' || g.name === '123 ');
+  if (game123) {
+    console.warn("Found game named '123' in localStorage:", game123);
+  }
+  
   return localGames;
+}
+
+export function debugLocalStorageGames() {
+  const allGames = getLocalStorageData('games');
+  console.log("=== ALL GAMES IN LOCAL STORAGE ===");
+  console.log(`Total games: ${allGames.length}`);
+  allGames.forEach(g => {
+    console.log(`- ID: ${g.id}, Name: "${g.name}", Approved: ${g.approved}`);
+  });
+  
+  const game123 = allGames.find(g => g.name === '123' || g.name === '123 ');
+  if (game123) {
+    console.warn("!!! FOUND GAME NAMED '123' !!!");
+    console.warn(game123);
+  } else {
+    console.log("No game named '123' found in localStorage");
+  }
+  
+  return allGames;
+}
+
+export function removeGameByName(gameName) {
+  const games = getLocalStorageData('games');
+  const filtered = games.filter(g => g.name !== gameName && g.name !== gameName + ' ');
+  if (games.length !== filtered.length) {
+    saveLocalStorageData('games', filtered);
+    console.log(`Removed game named "${gameName}" from localStorage`);
+    return true;
+  }
+  console.log(`No game named "${gameName}" found to remove`);
+  return false;
 }
 
 export async function updateGameDetails(gameId, updatedData) {
