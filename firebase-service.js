@@ -736,17 +736,12 @@ export async function getPendingGameRequests() {
   return getLocalStorageData('game_requests');
 }
 
-export async function handleGameRequest(requestId, status, adminSuggestions = "", requesterUid = null) {
+export async function handleGameRequest(requestId, status, adminSuggestions = "", requesterUid = null, requesterRole = null) {
   const requests = getLocalStorageData('game_requests');
   const idx = requests.findIndex(r => r.id === requestId);
   let requestData = null;
 
   if (idx !== -1) {
-    // Only allow the game creator (developer) to approve their own game
-    if (status === 'approved' && requesterUid && requestData.developerUid !== requesterUid) {
-      throw new Error('You can only approve your own game requests');
-    }
-    
     requests[idx].status = status;
     requests[idx].adminSuggestions = adminSuggestions;
     requestData = requests[idx];

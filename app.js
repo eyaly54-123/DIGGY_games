@@ -2167,7 +2167,7 @@ function openAdminReasonModal(requestId, status, type) {
         await handleDeveloperRequest(requestId, status, reason);
         showToast("Developer request updated and email sent successfully!", "success");
       } else if (type === 'game') {
-        await handleGameRequest(requestId, status, reason, state.user.uid);
+        await handleGameRequest(requestId, status, reason);
         showToast("Game request updated and email sent successfully!", "success");
       }
       
