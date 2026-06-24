@@ -1195,11 +1195,15 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
         emailJSSettings.serviceId,
         emailJSSettings.templateId,
         {
+          to: recipientEmail,
           to_email: recipientEmail,
+          email: recipientEmail,
+          recipient: recipientEmail,
           subject,
           message: htmlContent,
           message_html: htmlContent,
           reply_to: recipientEmail,
+          replyTo: recipientEmail,
           from_name: emailJSSettings.fromName
         },
         emailJSSettings.publicKey
