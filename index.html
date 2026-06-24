@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +12,20 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+
+  <!-- Intro Splash Animation -->
+  <div id="diggy-splash">
+    <div class="splash-grid"></div>
+    <div class="splash-logo">
+      <span class="splash-letter" style="--i:0">D</span>
+      <span class="splash-letter" style="--i:1">I</span>
+      <span class="splash-letter" style="--i:2">G</span>
+      <span class="splash-letter" style="--i:3">G</span>
+      <span class="splash-letter" style="--i:4">Y</span>
+    </div>
+    <div class="splash-tagline">GAMING ARENA</div>
+    <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+  </div>
 
   <!-- App Shell -->
   <div id="app-root">
@@ -32,7 +46,7 @@
       <div class="sidebar-bottom">
         <div class="nav-item" id="settings-nav-btn" data-route="#/settings" style="margin-bottom: 5px;">
           <i class="fas fa-sliders-h"></i>
-          <span>הגדרות פרופיל</span>
+          <span>Profile Settings</span>
         </div>
         
         <!-- User account details -->
@@ -48,30 +62,30 @@
         <div class="footer-grid">
           <div class="footer-col footer-brand">
             <div class="footer-logo">DIGGY Arena</div>
-            <p class="footer-desc">פלטפורמת משחקים בטוחה לילדים ונוער. משחקי ארקייד, רטרו וקז'ואל — ללא פרסומות.</p>
-            <p class="footer-copyright">© 2026 DIGGY Arena Ltd. כל הזכויות שמורות.</p>
+            <p class="footer-desc">A safe gaming platform for kids and teens. Arcade, retro, and casual games — no ads.</p>
+            <p class="footer-copyright">© 2026 DIGGY Arena Ltd. All rights reserved.</p>
           </div>
           <div class="footer-col">
-            <h4 class="footer-heading">ניווט באתר</h4>
+            <h4 class="footer-heading">Site Navigation</h4>
             <ul class="footer-links">
-              <li><a href="#" id="footer-sitemap-btn">מפת האתר</a></li>
-              <li><a href="#" id="footer-articles-btn">מאמרים וחדשות</a></li>
-              <li><a href="#/">קטלוג משחקים</a></li>
-              <li><a href="#/login">הרשמה / כניסה</a></li>
+              <li><a href="#" id="footer-sitemap-btn">Site Map</a></li>
+              <li><a href="#" id="footer-articles-btn">Articles & News</a></li>
+              <li><a href="#/">Game Catalog</a></li>
+              <li><a href="#/login">Sign Up / Log In</a></li>
             </ul>
           </div>
           <div class="footer-col">
-            <h4 class="footer-heading">מידע משפטי</h4>
+            <h4 class="footer-heading">Legal Info</h4>
             <ul class="footer-links">
-              <li><a href="#" id="footer-terms-btn">תנאי שימוש</a></li>
-              <li><a href="#" id="footer-privacy-btn">מדיניות פרטיות</a></li>
-              <li><a href="#" id="footer-contact-btn">צור קשר</a></li>
+              <li><a href="#" id="footer-terms-btn">Terms of Use</a></li>
+              <li><a href="#" id="footer-privacy-btn">Privacy Policy</a></li>
+              <li><a href="#" id="footer-contact-btn">Contact Us</a></li>
             </ul>
           </div>
           <div class="footer-col footer-rights">
-            <h4 class="footer-heading"><i class="fas fa-copyright"></i> בעלי זכויות</h4>
-            <p class="footer-rights-text">מזהים תוכן המפר זכויות יוצרים? שלחו דיווח ונטפל תוך 48 שעות.</p>
-            <a href="#" id="footer-rights-btn" class="footer-rights-link">דיווח על הפרת זכויות ←</a>
+            <h4 class="footer-heading"><i class="fas fa-copyright"></i> Copyright Holders</h4>
+            <p class="footer-rights-text">Identified content that infringes copyright? Send a report and we'll address it within 48 hours.</p>
+            <a href="#" id="footer-rights-btn" class="footer-rights-link">Report a Rights Infringement →</a>
           </div>
         </div>
       </footer>
@@ -83,7 +97,7 @@
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal-container">
       <div class="modal-header">
-        <h2 class="modal-title" id="modal-title">כותרת מודאל</h2>
+        <h2 class="modal-title" id="modal-title">Modal Title</h2>
         <button class="modal-close" id="modal-close-btn"><i class="fas fa-times"></i></button>
       </div>
       <div class="modal-body" id="modal-body"></div>
@@ -96,7 +110,7 @@
   <!-- App Global Spinner Loader -->
   <div id="app-global-loader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,6,8,0.7); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 300; flex-direction: column; gap: 15px;">
     <div style="width: 50px; height: 50px; border: 4px solid var(--accent-color); border-top-color: transparent; border-radius: 50%; animation: spin 1s infinite linear; filter: drop-shadow(0 0 8px var(--accent-glow));"></div>
-    <div style="font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: bold; color: var(--accent-color); text-transform: uppercase;">מעבד נתונים...</div>
+    <div style="font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: bold; color: var(--accent-color); text-transform: uppercase;">Processing data...</div>
   </div>
 
   <style>
@@ -105,6 +119,20 @@
       100% { transform: rotate(360deg); }
     }
   </style>
+
+  <!-- Intro Splash Removal -->
+  <script>
+    (function() {
+      const splash = document.getElementById('diggy-splash');
+      if (!splash) return;
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          splash.classList.add('splash-hide');
+          setTimeout(() => splash.remove(), 700);
+        }, 1900);
+      });
+    })();
+  </script>
 
   <!-- Path-to-Hash Interceptor for URL simulation -->
   <script>

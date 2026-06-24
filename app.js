@@ -240,8 +240,8 @@ function renderAdminSupportChat(selectedThreadId = null) {
   state.supportActiveThreadId = effectiveThreadId;
 
   if (threads.length === 0) {
-    listEl.innerHTML = '<div class="support-chat-empty">אין פניות פתוחות כרגע.</div>';
-    contentEl.innerHTML = '<div class="support-chat-empty">לא נבחרה פנייה.</div>';
+    listEl.innerHTML = '<div class="support-chat-empty">No open tickets right now.</div>';
+    contentEl.innerHTML = '<div class="support-chat-empty">No ticket selected.</div>';
     return;
   }
 
@@ -252,7 +252,7 @@ function renderAdminSupportChat(selectedThreadId = null) {
       <button class="support-thread-card ${isActive ? 'active' : ''}" data-thread-id="${thread.id}">
         <div class="support-thread-title">${thread.subject}</div>
         <div class="support-thread-meta">${thread.name} · ${thread.email}</div>
-        <div class="support-thread-preview">${lastMsg ? lastMsg.text : 'ללא הודעות'}</div>
+        <div class="support-thread-preview">${lastMsg ? lastMsg.text : 'No messages'}</div>
       </button>
     `;
   }).join('');
@@ -278,12 +278,12 @@ function renderAdminSupportChat(selectedThreadId = null) {
         <div class="support-thread-title">${activeThread.subject}</div>
         <div class="support-thread-meta">${activeThread.name} · ${activeThread.email}</div>
       </div>
-      <div class="support-thread-meta">נוצר: ${new Date(activeThread.createdAt).toLocaleString()}</div>
+      <div class="support-thread-meta">Created: ${new Date(activeThread.createdAt).toLocaleString()}</div>
     </div>
     <div class="support-thread-messages">${messagesHtml}</div>
     <form id="support-reply-form" class="support-reply-form">
-      <textarea id="support-reply-input" rows="3" placeholder="הקלד תגובה לאדם שנותן תמיכה..."></textarea>
-      <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i> שלח</button>
+      <textarea id="support-reply-input" rows="3" placeholder="Type a reply to the support requester..."></textarea>
+      <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i> Send</button>
     </form>
   `;
 
@@ -299,14 +299,14 @@ function renderAdminSupportChat(selectedThreadId = null) {
       const customerEmail = activeThread.email;
       const html = `
         <div style="font-family: sans-serif; background: #07080a; color: white; padding: 24px; border-radius: 12px; border: 1px solid #00ff66;">
-          <h2 style="color: #00ff66;">תגובה חדשה מהצוות של DIGGY</h2>
-          <p>היי ${activeThread.name},</p>
+          <h2 style="color: #00ff66;">New reply from the DIGGY team</h2>
+          <p>Hi ${activeThread.name},</p>
           <p>${message}</p>
-          <p>לשאלות נוספות, ניתן להשיב ישירות לאימייל זה.</p>
+          <p>For further questions, you can reply directly to this email.</p>
         </div>
       `;
-      await sendEmailViaResend(customerEmail, `DIGGY - תגובה חדשה לתמיכה`, html);
-      showToast('התגובה נשלחה למשתמש!', 'success');
+      await sendEmailViaResend(customerEmail, `DIGGY - New support reply`, html);
+      showToast('Reply sent to the user!', 'success');
       renderAdminSupportChat(activeThread.id);
     });
   }
@@ -328,22 +328,22 @@ function setupGameRatingUI(gameId) {
   }
 
   container.innerHTML = `
-    <div class="rating-input-label">דרג את המשחק:</div>
+    <div class="rating-input-label">Rate this game:</div>
     <div class="star-rating-input" id="star-input-btns">
       ${[1, 2, 3, 4, 5].map(n => `
-        <button type="button" class="star-input-btn ${existingRating >= n ? 'selected' : ''}" data-score="${n}" title="${n} כוכבים">
+        <button type="button" class="star-input-btn ${existingRating >= n ? 'selected' : ''}" data-score="${n}" title="${n} stars">
           <i class="${existingRating >= n ? 'fas' : 'far'} fa-star"></i>
         </button>
       `).join('')}
     </div>
-    ${existingRating ? `<div class="rating-user-msg">דרגת ${existingRating} כוכבים</div>` : ''}
+    ${existingRating ? `<div class="rating-user-msg">You rated ${existingRating} stars</div>` : ''}
   `;
 
   container.querySelectorAll('.star-input-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const score = parseInt(btn.getAttribute('data-score'), 10);
       if (getUserRatingForGame(gameId)) {
-        showToast('כבר דירגת משחק זה!', 'warning');
+        showToast('You already rated this game!', 'warning');
         return;
       }
 
@@ -357,10 +357,10 @@ function setupGameRatingUI(gameId) {
           state.games[idx].ratingCount = (state.games[idx].ratingCount || 0) + 1;
           state.games[idx].ratingSum = (state.games[idx].ratingSum || 0) + score;
         }
-        showToast('תודה על הדירוג! ⭐', 'success');
+        showToast('Thanks for rating! ⭐', 'success');
         setupGameRatingUI(gameId);
       } catch (err) {
-        showToast('שגיאה בשמירת הדירוג', 'danger');
+        showToast('Error saving rating', 'danger');
       } finally {
         showLoader(false);
       }
@@ -491,20 +491,20 @@ function setupSidebarNavigation() {
   let navItems = `
     <div class="nav-item" id="home-nav-btn" data-route="#/">
       <i class="fas fa-home"></i>
-      <span>מסך הבית</span>
+      <span>Home</span>
     </div>
     <div class="nav-item" id="articles-nav-btn" data-route="#/articles">
       <i class="fas fa-newspaper"></i>
-      <span>מאמרים וחדשות</span>
+      <span>Articles & News</span>
     </div>
   `;
 
   // Add category navigation
   navItems += `
-    <div class="nav-section-title">קטגוריות</div>
+    <div class="nav-section-title">Categories</div>
     <div class="nav-item" data-category="ALL">
       <i class="fas fa-th-large"></i>
-      <span>הכל</span>
+      <span>All</span>
     </div>
     <div class="nav-item" data-category="RPG">
       <i class="fas fa-dragon"></i>
@@ -540,14 +540,14 @@ function setupSidebarNavigation() {
   if (state.user) {
     if (state.user.role === 'developer' || state.user.role === 'admin') {
       navItems += `
-        <div class="nav-section-title">פיתוח</div>
+        <div class="nav-section-title">Development</div>
         <div class="nav-item" id="dev-nav-btn" data-route="#/dev">
           <i class="fas fa-code"></i>
-          <span>פאנל מפתח</span>
+          <span>Developer Panel</span>
         </div>
         <div class="nav-item" id="dev-docs-btn" data-route="#/dev-docs">
           <i class="fas fa-book"></i>
-          <span>מדריך מפתחים</span>
+          <span>Developer Guide</span>
         </div>
       `;
     }
@@ -556,7 +556,7 @@ function setupSidebarNavigation() {
       navItems += `
         <div class="nav-item" id="admin-nav-btn" data-route="#/admin">
           <i class="fas fa-shield-alt"></i>
-          <span>ניהול מערכת</span>
+          <span>System Admin</span>
         </div>
       `;
     }
@@ -773,8 +773,8 @@ async function renderHome() {
   main.innerHTML = `
     <div class="top-header">
       <div class="page-title-wrap">
-        <h1>היכל המשחקים DIGGY</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">מקום המשחקים המוביל לילדים ומתכנתים</p>
+        <h1>DIGGY Game Hall</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">The top games spot for kids and developers</p>
       </div>
       <div class="header-actions" id="header-auth-actions"></div>
     </div>
@@ -784,9 +784,9 @@ async function renderHome() {
 
     <!-- Categories Tab Filter -->
     <div class="section-title">
-      <span>קטגוריות משחקים</span>
+      <span>Game Categories</span>
       <div class="category-tabs" style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <button class="btn btn-secondary active-cat" data-category="ALL" style="padding: 6px 14px; font-size: 11px;">הכל</button>
+        <button class="btn btn-secondary active-cat" data-category="ALL" style="padding: 6px 14px; font-size: 11px;">All</button>
         <button class="btn btn-secondary" data-category="RPG" style="padding: 6px 14px; font-size: 11px;">RPG</button>
         <button class="btn btn-secondary" data-category="RETRO" style="padding: 6px 14px; font-size: 11px;">RETRO</button>
         <button class="btn btn-secondary" data-category="MULTIPLAYER" style="padding: 6px 14px; font-size: 11px;">MULTIPLAYER</button>
@@ -802,13 +802,13 @@ async function renderHome() {
 
     <!-- Recently Played Section -->
     <div id="recent-played-section" style="display: none;">
-      <div class="section-title">משחקים ששיחקת לאחרונה</div>
+      <div class="section-title">Recently Played Games</div>
       <div class="games-grid" id="recent-games-grid"></div>
     </div>
 
     <!-- Favorite Games Section -->
     <div id="favorites-section" style="display: none;">
-      <div class="section-title">משחקים שאהבת (ב-❤️)</div>
+      <div class="section-title">Games You Loved (❤️)</div>
       <div class="games-grid" id="favorite-games-grid"></div>
     </div>
   `;
@@ -842,8 +842,8 @@ function renderHeaderActions() {
   if (state.user) {
     container.innerHTML = `
       <div style="display: flex; gap: 10px; align-items: center;">
-        <span style="color: var(--text-muted); font-size: 14px;">שלום, <strong>${state.user.username}</strong>!</span>
-        <button class="btn btn-secondary" id="logout-btn"><i class="fas fa-sign-out-alt"></i> התנתק</button>
+        <span style="color: var(--text-muted); font-size: 14px;">Hi, <strong>${state.user.username}</strong>!</span>
+        <button class="btn btn-secondary" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Log Out</button>
       </div>
     `;
     document.getElementById('logout-btn').addEventListener('click', async () => {
@@ -852,7 +852,7 @@ function renderHeaderActions() {
     });
   } else {
     container.innerHTML = `
-      <button class="btn btn-primary" onclick="window.location.hash='#/login'"><i class="fas fa-sign-in-alt"></i> התחבר / הרשם</button>
+      <button class="btn btn-primary" onclick="window.location.hash='#/login'"><i class="fas fa-sign-in-alt"></i> Log In / Sign Up</button>
     `;
   }
 }
@@ -873,10 +873,10 @@ function setupPromoCarousel() {
     <div class="slide-item ${index === 0 ? 'active' : ''}" style="background-image: url('${game.logoUrl}')" data-index="${index}">
       <div class="slide-overlay"></div>
       <div class="slide-content">
-        <span class="slide-tag">משחק מומלץ!</span>
+        <span class="slide-tag">Featured Game!</span>
         <h2 class="slide-title">${game.name}</h2>
         <p class="slide-desc">${game.description}</p>
-        <button class="btn btn-primary play-now-promo" data-id="${game.id}"><i class="fas fa-play"></i> שחק עכשיו</button>
+        <button class="btn btn-primary play-now-promo" data-id="${game.id}"><i class="fas fa-play"></i> Play Now</button>
       </div>
     </div>
   `).join('');
@@ -914,7 +914,7 @@ function renderGamesGrid(categoryFilter) {
   console.log("Filtered games:", filtered.map(g => ({ name: g.name, categories: g.categories })));
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">אין משחקים בקטגוריה זו כרגע.</div>`;
+    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">No games in this category right now.</div>`;
     return;
   }
 
@@ -939,7 +939,7 @@ function createGameCardMarkup(game) {
       <div class="game-card-body">
         <h3 class="game-card-title">${game.name}</h3>
         <div class="game-card-dev">
-          <i class="fas fa-code-branch"></i> מפתח: ${game.developerName}
+          <i class="fas fa-code-branch"></i> Developer: ${game.developerName}
         </div>
         ${renderStarsDisplay(rating, count, 'card-size')}
         <p class="game-card-desc">${game.description}</p>
@@ -947,7 +947,7 @@ function createGameCardMarkup(game) {
           ${game.categories.map(c => `<span class="game-tag">${c}</span>`).join('')}
         </div>
         <button class="btn btn-secondary play-game-btn" data-id="${game.id}" style="width: 100%; justify-content: center; padding: 8px;">
-          <i class="fas fa-play"></i> שחק
+          <i class="fas fa-play"></i> Play
         </button>
       </div>
     </div>
@@ -967,7 +967,7 @@ function bindGameCardEvents(container) {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (!state.user) {
-        showToast("אנא התחבר כדי לשמור משחקים מועדפים!", "warning");
+        showToast("Please log in to save favorite games!", "warning");
         navigateTo('#/login');
         return;
       }
@@ -978,12 +978,12 @@ function bindGameCardEvents(container) {
         favs = favs.filter(fId => fId !== id);
         btn.classList.remove('active');
         btn.querySelector('i').className = 'far fa-heart';
-        showToast("הוסר מהמועדפים", "info");
+        showToast("Removed from favorites", "info");
       } else {
         favs.push(id);
         btn.classList.add('active');
         btn.querySelector('i').className = 'fas fa-heart';
-        showToast("נוסף למועדפים! ❤️", "success");
+        showToast("Added to favorites! ❤️", "success");
       }
       
       state.user.favorites = favs;
@@ -1043,34 +1043,34 @@ function renderLogin() {
     <div style="display: flex; align-items: center; justify-content: center; min-height: 70vh;">
       <div class="modal-container" style="max-width: 420px; width: 100%;">
         <div class="modal-header" style="justify-content: center;">
-          <h2 class="modal-title" id="auth-panel-title">כניסה למערכת DIGGY</h2>
+          <h2 class="modal-title" id="auth-panel-title">Log In to DIGGY</h2>
         </div>
         <div class="modal-body" id="auth-panel-body">
           <form id="login-form">
             <div class="form-group">
-              <label>שם משתמש (6-12 תווים)</label>
-              <input type="text" id="auth-username" required placeholder="הזן שם משתמש">
+              <label>Username (6-12 characters)</label>
+              <input type="text" id="auth-username" required placeholder="Enter username">
             </div>
             <div class="form-group">
-              <label>סיסמה (6-12 תווים)</label>
-              <input type="password" id="auth-password" required placeholder="הזן סיסמה">
+              <label>Password (6-12 characters)</label>
+              <input type="password" id="auth-password" required placeholder="Enter password">
             </div>
             <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 10px;">
-              <i class="fas fa-rocket"></i> התחבר
+              <i class="fas fa-rocket"></i> Log In
             </button>
           </form>
 
           <div style="margin: 20px 0; text-align: center; color: var(--text-muted); font-size: 13px;">
-            או התחבר באמצעות:
+            Or log in with:
           </div>
 
           <button class="btn btn-secondary" id="auth-biometric-btn" style="width: 100%; justify-content: center; margin-bottom: 20px;">
-            <i class="fas fa-fingerprint" style="color: var(--accent-color);"></i> כניסה ביומטרית מהירה
+            <i class="fas fa-fingerprint" style="color: var(--accent-color);"></i> Quick Biometric Login
           </button>
 
           <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; text-align: center; font-size: 14px;">
-            <span style="color: var(--text-muted);">חדש באתר?</span> 
-            <a href="#" id="toggle-auth-mode" style="color: var(--accent-color); font-weight: bold; margin-right: 5px;">צור חשבון חדש</a>
+            <span style="color: var(--text-muted);">New here?</span>
+            <a href="#" id="toggle-auth-mode" style="color: var(--accent-color); font-weight: bold; margin-right: 5px;">Create a new account</a>
           </div>
         </div>
       </div>
@@ -1087,14 +1087,14 @@ function renderLogin() {
     e.preventDefault();
     isRegisterMode = !isRegisterMode;
     if (isRegisterMode) {
-      panelTitle.textContent = "רישום חשבון DIGGY חדש";
-      form.querySelector('button[type="submit"]').innerHTML = `<i class="fas fa-user-plus"></i> צור חשבון`;
-      toggleLink.textContent = "התחבר לחשבון קיים";
+      panelTitle.textContent = "Register a new DIGGY account";
+      form.querySelector('button[type="submit"]').innerHTML = `<i class="fas fa-user-plus"></i> Create Account`;
+      toggleLink.textContent = "Log in to an existing account";
       bioBtn.style.display = 'none';
     } else {
-      panelTitle.textContent = "כניסה למערכת DIGGY";
-      form.querySelector('button[type="submit"]').innerHTML = `<i class="fas fa-rocket"></i> התחבר`;
-      toggleLink.textContent = "צור חשבון חדש";
+      panelTitle.textContent = "Log In to DIGGY";
+      form.querySelector('button[type="submit"]').innerHTML = `<i class="fas fa-rocket"></i> Log In`;
+      toggleLink.textContent = "Create a new account";
       bioBtn.style.display = 'flex';
     }
   });
@@ -1122,7 +1122,7 @@ function renderLogin() {
     if (!isRegisterMode) {
       const rateLimit = checkLoginRateLimit(username);
       if (!rateLimit.allowed) {
-        showToast(`יותר מדי ניסיונות כניסה. נסה שוב בעוד ${rateLimit.remainingTime} דקות.`, "danger");
+        showToast(`Too many login attempts. Try again in ${rateLimit.remainingTime} minutes.`, "danger");
         return;
       }
     }
@@ -1132,7 +1132,7 @@ function renderLogin() {
       if (isRegisterMode) {
         // Sign Up
         const userProfile = await signUpUser(username, password);
-        showToast("החשבון נוצר בהצלחה! ברוך הבא ל-DIGGY 🎉", "success");
+        showToast("Account created successfully! Welcome to DIGGY 🎉", "success");
         navigateTo('#/');
       } else {
         // Sign In
@@ -1145,7 +1145,7 @@ function renderLogin() {
         const requirementStatus = getPrivilegedAccountRequirements(profile);
         if (requirementStatus.required && !requirementStatus.complete) {
           showLoader(false);
-          showToast("לפני הכניסה למערכת עליך להשלים הגדרות אבטחה: אימות דו-שלבי וכתובת תמיכה.", "danger");
+          showToast("Before logging in you must complete security settings: two-factor authentication and a support email.", "danger");
           navigateTo('#/settings');
           return;
         }
@@ -1157,7 +1157,7 @@ function renderLogin() {
           return;
         }
 
-        showToast("התחברת בהצלחה! 🎮", "success");
+        showToast("Logged in successfully! 🎮", "success");
         navigateTo('#/');
       }
     } catch (err) {
@@ -1181,31 +1181,31 @@ function trigger2FAFlow(profile) {
   const emailHtml = `
     <div style="background: #07080a; color: #fff; padding: 30px; border-radius: 12px; border: 1px solid #00ff66; font-family: sans-serif; text-align: center;">
       <h2 style="color: #00ff66;">DIGGY Security Verification</h2>
-      <p>שלום ${profile.username}, קיבלנו בקשת התחברות לחשבון שלך.</p>
+      <p>Hi ${profile.username}, we received a login request for your account.</p>
       <div style="font-size: 32px; font-weight: bold; background: rgba(0,255,102,0.1); border: 1px dashed #00ff66; padding: 15px; margin: 20px auto; letter-spacing: 5px; width: 200px; border-radius: 6px;">
         ${code}
       </div>
-      <p style="color: #888;">הקוד תקף ל-5 דקות הקרובות. אנא אל תשתף קוד זה עם אף אחד.</p>
+      <p style="color: #888;">This code is valid for the next 5 minutes. Please don't share this code with anyone.</p>
     </div>
   `;
   
   import('./firebase-service.js').then(async (mod) => {
     const destEmail = profile.twoFactorEmail || profile.email || 'diggy-games@outlook.com';
-    await mod.sendEmailViaResend(destEmail, "DIGGY - קוד אימות דו-שלבי", emailHtml);
-    
+    await mod.sendEmailViaResend(destEmail, "DIGGY - Two-factor verification code", emailHtml);
+
     // Show 2FA input modal
     const overlay = document.getElementById('modal-overlay');
     const modalTitle = document.getElementById('modal-title');
     const modalBody = document.getElementById('modal-body');
-    
-    modalTitle.textContent = "אימות דו-שלבי (2FA)";
+
+    modalTitle.textContent = "Two-Factor Verification (2FA)";
     modalBody.innerHTML = `
       <div style="text-align: center; display: flex; flex-direction: column; gap: 15px;">
-        <p>קוד אימות נשלח לאימייל שלך: <strong style="color: var(--accent-color);">${destEmail}</strong></p>
-        <p style="font-size: 13px; color: var(--text-muted);">הזן את 6 הספרות כדי להשלים את ההתחברות:</p>
+        <p>A verification code was sent to your email: <strong style="color: var(--accent-color);">${destEmail}</strong></p>
+        <p style="font-size: 13px; color: var(--text-muted);">Enter the 6 digits to complete login:</p>
         <input type="text" id="twofactor-input" max-length="6" placeholder="000000" style="text-align: center; font-size: 24px; letter-spacing: 8px; font-family: var(--font-display); width: 200px; margin: 10px auto;">
-        <button class="btn btn-primary" id="verify-2fa-btn" style="justify-content: center;">אמת קוד וכנס</button>
-        <button class="btn btn-secondary" id="resend-2fa-btn" style="justify-content: center; font-size: 12px;">שלח קוד חדש</button>
+        <button class="btn btn-primary" id="verify-2fa-btn" style="justify-content: center;">Verify Code & Log In</button>
+        <button class="btn btn-secondary" id="resend-2fa-btn" style="justify-content: center; font-size: 12px;">Send New Code</button>
       </div>
     `;
     
@@ -1217,11 +1217,11 @@ function trigger2FAFlow(profile) {
       
       if (verification.valid) {
         overlay.classList.remove('active');
-        showToast("הקוד אומת! ברוך הבא ל-DIGGY 🎉", "success");
+        showToast("Code verified! Welcome to DIGGY 🎉", "success");
         navigateTo('#/');
       } else {
         showToast(verification.error, "danger");
-        if (verification.error.includes('חרגת')) {
+        if (verification.error.includes('Exceeded')) {
           // Max attempts reached, close modal and redirect to login
           setTimeout(() => {
             overlay.classList.remove('active');
@@ -1237,8 +1237,8 @@ function trigger2FAFlow(profile) {
       const newCode = generateAndStore2FACode(profile.uid);
       
       const newEmailHtml = emailHtml.replace(code, newCode);
-      mod.sendEmailViaResend(destEmail, "DIGGY - קוד אימות דו-שלבי (חדש)", newEmailHtml);
-      showToast("קוד חדש נשלח לאימייל!", "info");
+      mod.sendEmailViaResend(destEmail, "DIGGY - Two-factor verification code (new)", newEmailHtml);
+      showToast("New code sent to your email!", "info");
     });
   });
 }
@@ -1249,16 +1249,16 @@ async function triggerBiometricLoginFlow() {
   const modalTitle = document.getElementById('modal-title');
   const modalBody = document.getElementById('modal-body');
 
-  modalTitle.textContent = "סורק טביעת אצבע ביומטרי";
+  modalTitle.textContent = "Biometric Fingerprint Scanner";
   modalBody.innerHTML = `
     <div class="bio-scanner-container">
       <div class="fingerprint-widget scanning" id="bio-widget">
         <i class="fas fa-fingerprint fingerprint-icon"></i>
         <div class="scanner-laser"></div>
       </div>
-      <div id="bio-status" style="font-weight: bold; color: var(--accent-color); text-transform: uppercase; font-family: var(--font-display);">סורק... נא להניח אצבע</div>
+      <div id="bio-status" style="font-weight: bold; color: var(--accent-color); text-transform: uppercase; font-family: var(--font-display);">Scanning... please place your finger</div>
       <p style="font-size: 13px; color: var(--text-muted); max-width: 300px;">
-        מתחבר באמצעות מפתח האבטחה הביומטרי של המכשיר שלך (WebAuthn).
+        Logging in using your device's biometric security key (WebAuthn).
       </p>
     </div>
   `;
@@ -1277,12 +1277,12 @@ async function triggerBiometricLoginFlow() {
     if (!username || !uid) {
       widget.classList.remove('scanning');
       widget.style.color = 'var(--danger-color)';
-      statusText.innerHTML = "שגיאה: זיהוי ביומטרי לא מוגדר!";
+      statusText.innerHTML = "Error: Biometric login not set up!";
       statusText.style.color = 'var(--danger-color)';
-      
+
       setTimeout(() => {
         overlay.classList.remove('active');
-        showToast("לא הוגדרה כניסה ביומטרית בחשבון זה! היכנס רגיל והפעל אותה בהגדרות.", "warning");
+        showToast("Biometric login isn't set up for this account! Log in normally and enable it in settings.", "warning");
       }, 1500);
       return;
     }
@@ -1294,13 +1294,13 @@ async function triggerBiometricLoginFlow() {
       if (result.success) {
         widget.classList.remove('scanning');
         widget.style.color = '#00ff66';
-        statusText.innerHTML = "סריקה הושלמה! מאושר";
-        
+        statusText.innerHTML = "Scan complete! Approved";
+
         setTimeout(async () => {
           overlay.classList.remove('active');
           // Log in with biometric token
           const profile = await logInUser(username, "auth_biometric_token");
-          showToast(`ברוך שובך ביומטרי, ${username}!`, "success");
+          showToast(`Welcome back, ${username}!`, "success");
           navigateTo('#/');
         }, 1000);
       }
@@ -1308,12 +1308,12 @@ async function triggerBiometricLoginFlow() {
       console.warn("WebAuthn verification failed:", e);
       widget.classList.remove('scanning');
       widget.style.color = 'var(--danger-color)';
-      statusText.innerHTML = "סריקה נכשלה";
+      statusText.innerHTML = "Scan failed";
       statusText.style.color = 'var(--danger-color)';
-      
+
       setTimeout(() => {
         overlay.classList.remove('active');
-        showToast("שגיאה בכניסה ביומטרית: " + e.message, "danger");
+        showToast("Error during biometric login: " + e.message, "danger");
       }, 1500);
     }
   }, 2000);
@@ -1327,9 +1327,9 @@ async function renderDev() {
     main.innerHTML = `
       <div style="text-align: center; padding: 80px 0;">
         <i class="fas fa-lock" style="font-size: 64px; color: var(--danger-color); margin-bottom: 20px;"></i>
-        <h2>גישה חסומה!</h2>
-        <p style="color: var(--text-muted); margin-top: 10px;">דף זה מיועד למפתחים מורשים בלבד. אם ברצונך להעלות משחקים, הגש בקשה בהגדרות.</p>
-        <button class="btn btn-primary" onclick="window.location.hash='#/'" style="margin-top: 20px;">חזור למסך הבית</button>
+        <h2>Access Blocked!</h2>
+        <p style="color: var(--text-muted); margin-top: 10px;">This page is for authorized developers only. If you'd like to upload games, submit a request in settings.</p>
+        <button class="btn btn-primary" onclick="window.location.hash='#/'" style="margin-top: 20px;">Back to Home</button>
       </div>
     `;
     return;
@@ -1338,29 +1338,29 @@ async function renderDev() {
   main.innerHTML = `
     <div class="top-header">
       <div class="page-title-wrap">
-        <h1>לוח בקרה מפתח</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">נהל את המשחקים שלך והגש בקשות העלאה לאתר</p>
+        <h1>Developer Dashboard</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">Manage your games and submit upload requests to the site</p>
       </div>
-      <button class="btn btn-primary" id="dev-submit-game-btn"><i class="fas fa-plus"></i> הגש משחק חדש</button>
+      <button class="btn btn-primary" id="dev-submit-game-btn"><i class="fas fa-plus"></i> Submit New Game</button>
     </div>
 
-    <div class="section-title">המשחקים והבקשות שלך</div>
+    <div class="section-title">Your Games and Requests</div>
     <div class="data-table-container">
       <table class="data-table">
         <thead>
           <tr>
-            <th>לוגו</th>
-            <th>שם המשחק</th>
-            <th>קטגוריות</th>
-            <th>קישור GITHUB</th>
-            <th>סטטוס</th>
-            <th>הערות ADMIN</th>
-            <th>פעולות</th>
+            <th>Logo</th>
+            <th>Game Name</th>
+            <th>Categories</th>
+            <th>GITHUB Link</th>
+            <th>Status</th>
+            <th>ADMIN Notes</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="dev-games-list-body">
           <tr>
-            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">טוען נתונים...</td>
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Loading data...</td>
           </tr>
         </tbody>
       </table>
@@ -1377,35 +1377,35 @@ async function renderDev() {
         <tr>
           <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px;">
             <i class="fas fa-folder-open" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-            טרם הגשת משחקים לאתר. לחץ על "הגש משחק חדש" כדי להתחיל!
+            You haven't submitted any games yet. Click "Submit New Game" to get started!
           </td>
         </tr>
       `;
     } else {
       body.innerHTML = requests.map(req => {
         let statusBadge = '';
-        if (req.status === 'pending') statusBadge = '<span class="badge badge-pending">ממתין לאישור</span>';
-        else if (req.status === 'approved') statusBadge = '<span class="badge badge-approved">אושר בהצלחה</span>';
-        else if (req.status === 'rejected') statusBadge = '<span class="badge badge-rejected">נדחה</span>';
-        else if (req.status === 'improvement') statusBadge = '<span class="badge badge-improvement">דרוש תיקון</span>';
+        if (req.status === 'pending') statusBadge = '<span class="badge badge-pending">Pending Review</span>';
+        else if (req.status === 'approved') statusBadge = '<span class="badge badge-approved">Approved</span>';
+        else if (req.status === 'rejected') statusBadge = '<span class="badge badge-rejected">Rejected</span>';
+        else if (req.status === 'improvement') statusBadge = '<span class="badge badge-improvement">Needs Improvement</span>';
 
-        const actionBtn = req.status === 'improvement' 
-          ? `<button class="btn btn-secondary resubmit-btn" data-id="${req.id}" style="padding: 4px 10px; font-size: 11px;"><i class="fas fa-edit"></i> ערוך והגש שנית</button>`
-          : (req.status === 'approved' 
+        const actionBtn = req.status === 'improvement'
+          ? `<button class="btn btn-secondary resubmit-btn" data-id="${req.id}" style="padding: 4px 10px; font-size: 11px;"><i class="fas fa-edit"></i> Edit & Resubmit</button>`
+          : (req.status === 'approved'
               ? `<div style="display: flex; gap: 6px;">
-                  <button class="btn btn-secondary view-stats-btn" data-id="${req.id}" style="padding: 4px 8px; font-size: 11px; background: rgba(0, 255, 102, 0.05); color: var(--accent-color); border-color: rgba(0,255,102,0.2);"><i class="fas fa-chart-line"></i> סטטיסטיקות</button>
-                  <button class="btn btn-primary new-version-btn" data-id="${req.id}" style="padding: 4px 8px; font-size: 11px;"><i class="fas fa-code-branch"></i> גרסה חדשה</button>
-                 </div>` 
-              : '<span style="color: var(--text-dark); font-size: 12px;">אין פעולות</span>');
+                  <button class="btn btn-secondary view-stats-btn" data-id="${req.id}" style="padding: 4px 8px; font-size: 11px; background: rgba(0, 255, 102, 0.05); color: var(--accent-color); border-color: rgba(0,255,102,0.2);"><i class="fas fa-chart-line"></i> Stats</button>
+                  <button class="btn btn-primary new-version-btn" data-id="${req.id}" style="padding: 4px 8px; font-size: 11px;"><i class="fas fa-code-branch"></i> New Version</button>
+                 </div>`
+              : '<span style="color: var(--text-dark); font-size: 12px;">No actions</span>');
 
         return `
           <tr data-raw='${JSON.stringify(req)}'>
             <td><img src="${req.logoUrl || ''}" onerror="this.src='https://placehold.co/40x40/12161e/00ff66?text=G'" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;"></td>
             <td style="font-weight: bold; color: var(--accent-color);">${req.name}</td>
             <td>${req.categories ? req.categories.join(', ') : ''}</td>
-            <td><a href="${req.githubUrl}" target="_blank" style="color: #0096ff; text-decoration: underline; font-size: 12px;">קוד מאגר</a></td>
+            <td><a href="${req.githubUrl}" target="_blank" style="color: #0096ff; text-decoration: underline; font-size: 12px;">Repo Code</a></td>
             <td>${statusBadge}</td>
-            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${req.adminSuggestions || ''}">${req.adminSuggestions || '<span style="color: var(--text-dark);">אין</span>'}</td>
+            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${req.adminSuggestions || ''}">${req.adminSuggestions || '<span style="color: var(--text-dark);">None</span>'}</td>
             <td>${actionBtn}</td>
           </tr>
         `;
@@ -1436,7 +1436,7 @@ async function renderDev() {
       });
     }
   } catch (err) {
-    showToast("שגיאה בטעינת משחקי מפתח: " + err.message, "danger");
+    showToast("Error loading developer games: " + err.message, "danger");
   }
 
   document.getElementById('dev-submit-game-btn').addEventListener('click', () => {
@@ -1449,40 +1449,40 @@ function openGameSubmitModal(editData = null) {
   const modalTitle = document.getElementById('modal-title');
   const modalBody = document.getElementById('modal-body');
 
-  modalTitle.textContent = editData ? `עריכת והגשת המשחק: ${editData.name}` : "הגשת משחק חדש ל-DIGGY";
-  
+  modalTitle.textContent = editData ? `Edit & Resubmit Game: ${editData.name}` : "Submit New Game to DIGGY";
+
   modalBody.innerHTML = `
     <form id="game-submit-form">
       <div class="form-group">
-        <label>שם המשחק</label>
-        <input type="text" id="game-name" value="${editData ? editData.name : ''}" required placeholder="לדוגמה: מלך הרטרו">
+        <label>Game Name</label>
+        <input type="text" id="game-name" value="${editData ? editData.name : ''}" required placeholder="e.g. Retro King">
       </div>
       <div class="form-group">
-        <label>תיאור קצר</label>
-        <textarea id="game-desc" required placeholder="הסבר קצר על המשחק..." rows="2">${editData ? editData.description : ''}</textarea>
+        <label>Short Description</label>
+        <textarea id="game-desc" required placeholder="A short explanation of the game..." rows="2">${editData ? editData.description : ''}</textarea>
       </div>
       <div class="form-group">
-        <label>קישור לתמונת לוגו (URL)</label>
+        <label>Logo Image Link (URL)</label>
         <input type="url" id="game-logo" value="${editData ? editData.logoUrl : ''}" required placeholder="https://example.com/logo.png">
       </div>
       <div class="form-group">
-        <label>קישור למאגר GitHub (קוד המשחק)</label>
+        <label>GitHub Repo Link (game code)</label>
         <input type="url" id="game-github" value="${editData ? editData.githubUrl : ''}" required placeholder="https://github.com/user/repo" ${editData && editData.status === 'rejected' ? 'disabled' : ''}>
       </div>
       <div class="form-group">
-        <label>קישור למשחק פעיל (Playable URL / GitHub Pages / iframe)</label>
+        <label>Playable Game Link (Playable URL / GitHub Pages / iframe)</label>
         <input type="url" id="game-url" value="${editData ? (editData.gameUrl || '') : ''}" required placeholder="https://username.github.io/my-game/">
       </div>
       <div class="form-group">
-        <label>איך משחקים (מדריך מקוצר)</label>
-        <textarea id="game-how" required placeholder="לדוגמה: לחץ על חצים לזוז, רווח לירות..." rows="2">${editData ? editData.howToPlay : ''}</textarea>
+        <label>How to Play (short guide)</label>
+        <textarea id="game-how" required placeholder="e.g. Press arrows to move, space to shoot..." rows="2">${editData ? editData.howToPlay : ''}</textarea>
       </div>
       <div class="form-group">
-        <label>למי מיועד המשחק (קהל יעד)</label>
-        <input type="text" id="game-audience" value="${editData ? editData.targetAudience : ''}" required placeholder="לדוגמה: ילדים בגיל 8 ומעלה">
+        <label>Who the game is for (target audience)</label>
+        <input type="text" id="game-audience" value="${editData ? editData.targetAudience : ''}" required placeholder="e.g. Kids age 8 and up">
       </div>
       <div class="form-group">
-        <label>קטגוריות (סמן עד 3 קטגוריות)</label>
+        <label>Categories (select up to 3)</label>
         <div class="category-checkbox-grid">
           <label class="category-checkbox-label">
             <input type="checkbox" name="game-cats" value="RPG" ${editData && editData.categories.includes('RPG') ? 'checked' : ''}> RPG
@@ -1508,7 +1508,7 @@ function openGameSubmitModal(editData = null) {
         </div>
       </div>
       <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 15px;">
-        <i class="fas fa-paper-plane"></i> ${editData ? 'שלח עדכון מחדש' : 'שלח בקשה לאישור ADMIN'}
+        <i class="fas fa-paper-plane"></i> ${editData ? 'Resend Update' : 'Submit Request for ADMIN Approval'}
       </button>
     </form>
   `;
@@ -1529,11 +1529,11 @@ function openGameSubmitModal(editData = null) {
 
     const checkedBoxes = form.querySelectorAll('input[name="game-cats"]:checked');
     if (checkedBoxes.length === 0) {
-      showToast("עליך לבחור לפחות קטגוריה אחת (מקסימום 3)!", "warning");
+      showToast("You must select at least one category (maximum 3)!", "warning");
       return;
     }
     if (checkedBoxes.length > 3) {
-      showToast("ניתן לבחור עד 3 קטגוריות בלבד!", "warning");
+      showToast("You can select up to 3 categories only!", "warning");
       return;
     }
 
@@ -1557,11 +1557,11 @@ function openGameSubmitModal(editData = null) {
       if (editData) {
         // Re-submit updated game request
         await updateAndResubmitGameRequest(editData.id, gameData);
-        showToast("בקשת המשחק עודכנה ונשלחה מחדש לאישור! 🚀", "success");
+        showToast("Game request updated and resubmitted for approval! 🚀", "success");
       } else {
         // New game request
         await submitGameRequest(gameData);
-        showToast("המשחק נשלח לאישור ה-Admin! יישלח אליך עדכון במייל. 📧", "success");
+        showToast("Game submitted for Admin approval! You'll receive an email update. 📧", "success");
       }
       overlay.classList.remove('active');
       renderDev();
@@ -1578,7 +1578,7 @@ function openGameStatsModal(req) {
   const modalTitle = document.getElementById('modal-title');
   const modalBody = document.getElementById('modal-body');
 
-  modalTitle.textContent = `סטטיסטיקות משחק: ${req.name}`;
+  modalTitle.textContent = `Game Stats: ${req.name}`;
   
   const game = state.games.find(g => g.githubUrl === req.githubUrl || g.id === req.gameId);
   const plays = game ? (game.plays || 0) : 0;
@@ -1604,32 +1604,32 @@ function openGameStatsModal(req) {
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
         <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; box-shadow: var(--border-glow);">
           <i class="fas fa-play" style="font-size: 24px; color: var(--accent-color); margin-bottom: 8px;"></i>
-          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">כמות משחקים (Plays)</div>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Play Count (Plays)</div>
           <div style="font-size: 28px; font-weight: bold; color: var(--accent-color); margin-top: 5px; font-family: var(--font-display);">${plays}</div>
         </div>
 
         <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; box-shadow: var(--border-glow);">
           <i class="fas fa-star" style="font-size: 24px; color: #ffd700; margin-bottom: 8px;"></i>
-          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">דירוג שחקנים</div>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Player Rating</div>
           <div style="font-size: 28px; font-weight: bold; color: #fff; margin-top: 5px; font-family: var(--font-display);">${rating} <span style="font-size: 14px; color: var(--text-muted);">/ 5.0</span></div>
         </div>
 
         <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; box-shadow: var(--border-glow);">
           <i class="fas fa-hourglass-half" style="font-size: 24px; color: #70d6ff; margin-bottom: 8px;"></i>
-          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">זמן משחק ממוצע</div>
-          <div style="font-size: 22px; font-weight: bold; color: #fff; margin-top: 10px; font-family: var(--font-display);">${avgTime} דק'</div>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Average Play Time</div>
+          <div style="font-size: 22px; font-weight: bold; color: #fff; margin-top: 10px; font-family: var(--font-display);">${avgTime} min</div>
         </div>
 
         <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; text-align: center; box-shadow: var(--border-glow);">
           <i class="fas fa-coins" style="font-size: 24px; color: #00ff66; margin-bottom: 8px;"></i>
-          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">רווחים שנצברו</div>
+          <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Earnings Accrued</div>
           <div style="font-size: 22px; font-weight: bold; color: #00ff66; margin-top: 10px; font-family: var(--font-display);">${earnings} ₪</div>
         </div>
       </div>
 
       <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; font-size: 13px; line-height: 1.5; color: var(--text-muted);">
         <i class="fas fa-circle-info" style="color: var(--accent-color); margin-left: 5px;"></i>
-        הרווחים מחושבים לפי מפתח תגמול של 0.15 ₪ לכל משחק פעיל של שחקן רשום באתר. תשלומים מועברים בסוף כל חודש קלנדרי.
+        Earnings are calculated using a reward rate of ₪0.15 per active play by a registered player on the site. Payments are transferred at the end of each calendar month.
       </div>
     </div>
   `;
@@ -1642,42 +1642,42 @@ function openNewVersionModal(req) {
   const modalTitle = document.getElementById('modal-title');
   const modalBody = document.getElementById('modal-body');
 
-  modalTitle.textContent = `הגשת גרסה חדשה: ${req.name}`;
-  
+  modalTitle.textContent = `Submit New Version: ${req.name}`;
+
   modalBody.innerHTML = `
     <form id="game-version-form">
       <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 13px; color: var(--text-muted);">
         <i class="fas fa-info-circle" style="color: var(--accent-color); margin-left: 5px;"></i>
-        אתה מגיש כעת עדכון גרסה למשחק פעיל. בקשה זו תועבר לבדיקה של מנהל המערכת (Admin) ותעודכן באתר לאחר אישורה.
+        You are now submitting a version update for an active game. This request will be reviewed by the system Admin and updated on the site after approval.
       </div>
 
       <div class="form-group">
-        <label>שם המשחק (לא ניתן לשינוי)</label>
+        <label>Game Name (cannot be changed)</label>
         <input type="text" id="version-game-name" value="${req.name}" disabled style="background: rgba(255,255,255,0.02); color: var(--text-muted); cursor: not-allowed;">
       </div>
-      
+
       <div class="form-group">
-        <label>מספר הגרסה החדש (למשל: v1.1.0, v2.0)</label>
+        <label>New Version Number (e.g. v1.1.0, v2.0)</label>
         <input type="text" id="version-number" required placeholder="v1.1.0">
-      </div>
-      
-      <div class="form-group">
-        <label>מה חדש בגרסה הזו? (Changelog)</label>
-        <textarea id="version-changelog" required placeholder="פרט כאן את רשימת השינויים, תיקוני הבאגים והשיפורים בגרסה זו..." rows="4"></textarea>
       </div>
 
       <div class="form-group">
-        <label>קישור מעודכן למשחק פעיל (Playable URL)</label>
+        <label>What's new in this version? (Changelog)</label>
+        <textarea id="version-changelog" required placeholder="Detail the list of changes, bug fixes, and improvements in this version..." rows="4"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Updated Playable Game Link (Playable URL)</label>
         <input type="url" id="version-url" value="${req.gameUrl || ''}" required placeholder="https://username.github.io/my-game/">
       </div>
 
       <div class="form-group">
-        <label>קישור מעודכן למאגר GitHub (קוד המשחק)</label>
+        <label>Updated GitHub Repo Link (game code)</label>
         <input type="url" id="version-github" value="${req.githubUrl || ''}" required placeholder="https://github.com/user/repo">
       </div>
 
       <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 15px;">
-        <i class="fas fa-paper-plane"></i> שלח גרסה חדשה לאישור
+        <i class="fas fa-paper-plane"></i> Submit New Version for Approval
       </button>
     </form>
   `;
@@ -1703,7 +1703,7 @@ function openNewVersionModal(req) {
     showLoader(true);
     try {
       await submitGameVersionRequest(req.gameId || req.id, versionData);
-      showToast("גרסת המשחק החדשה נשלחה לאישור המנהל! 🚀", "success");
+      showToast("New game version sent for admin approval! 🚀", "success");
       overlay.classList.remove('active');
       renderDev();
     } catch (err) {
@@ -1722,9 +1722,9 @@ async function renderAdmin() {
     main.innerHTML = `
       <div style="text-align: center; padding: 80px 0;">
         <i class="fas fa-radiation-alt" style="font-size: 64px; color: var(--danger-color); margin-bottom: 20px;"></i>
-        <h2>מערכת נעולה - ADMIN ONLY!</h2>
-        <p style="color: var(--text-muted); margin-top: 10px;">דף זה מיועד אך ורק למנהלי מערכת DIGGY.</p>
-        <button class="btn btn-primary" onclick="window.location.hash='#/'" style="margin-top: 20px;">חזור למסך הבית</button>
+        <h2>System Locked - ADMIN ONLY!</h2>
+        <p style="color: var(--text-muted); margin-top: 10px;">This page is exclusively for DIGGY system admins.</p>
+        <button class="btn btn-primary" onclick="window.location.hash='#/'" style="margin-top: 20px;">Back to Home</button>
       </div>
     `;
     return;
@@ -1733,72 +1733,72 @@ async function renderAdmin() {
   main.innerHTML = `
     <div class="top-header">
       <div class="page-title-wrap">
-        <h1>לוח בקרה מנהל מערכת (Admin)</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">ניהול פניות מתכנתים, אישור משחקים חדשים והעלאה ישירה</p>
+        <h1>System Admin Dashboard (Admin)</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">Manage developer applications, approve new games, and direct uploads</p>
       </div>
-      <button class="btn btn-primary" id="admin-direct-upload-btn"><i class="fas fa-upload"></i> העלה משחק ישיר</button>
+      <button class="btn btn-primary" id="admin-direct-upload-btn"><i class="fas fa-upload"></i> Direct Game Upload</button>
     </div>
 
     <!-- Dev Applications Section -->
-    <div class="section-title">פניות שחקנים להפוך למתכנתים</div>
+    <div class="section-title">Player Applications to Become Developers</div>
     <div class="data-table-container">
       <table class="data-table">
         <thead>
           <tr>
-            <th>שם משתמש</th>
-            <th>אימייל אבטחה</th>
-            <th>סיבת בקשה</th>
-            <th>תאריך</th>
-            <th>סטטוס פנייה</th>
-            <th>פעולות החלטה</th>
+            <th>Username</th>
+            <th>Security Email</th>
+            <th>Request Reason</th>
+            <th>Date</th>
+            <th>Request Status</th>
+            <th>Decision Actions</th>
           </tr>
         </thead>
         <tbody id="admin-dev-requests-body">
-          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">טוען בקשות...</td></tr>
+          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading requests...</td></tr>
         </tbody>
       </table>
     </div>
 
     <!-- Game Submissions Section -->
-    <div class="section-title">הגשות משחקים חדשים לאישור</div>
+    <div class="section-title">New Game Submissions for Approval</div>
     <div class="data-table-container">
       <table class="data-table">
         <thead>
           <tr>
-            <th>מפתח</th>
-            <th>פרטי משחק</th>
-            <th>קטגוריות</th>
+            <th>Developer</th>
+            <th>Game Details</th>
+            <th>Categories</th>
             <th>GitHub</th>
-            <th>קהל יעד / תיאור</th>
-            <th>פעולות החלטה</th>
+            <th>Target Audience / Description</th>
+            <th>Decision Actions</th>
           </tr>
         </thead>
         <tbody id="admin-game-requests-body">
-          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">טוען משחקים לאישור...</td></tr>
+          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading games for approval...</td></tr>
         </tbody>
       </table>
     </div>
 
     <!-- Support Chat Section -->
-    <div class="section-title">צ'אט תמיכה / Admin Inbox</div>
+    <div class="section-title">Support Chat / Admin Inbox</div>
     <div class="support-chat-shell">
       <div class="support-chat-list" id="admin-support-thread-list"></div>
       <div class="support-chat-content" id="admin-support-thread-content"></div>
     </div>
 
     <!-- EmailJS Configuration Section -->
-    <div class="section-title">הגדרות EmailJS ואימיילים</div>
+    <div class="section-title">EmailJS and Email Settings</div>
     <div class="data-table-container" style="padding: 20px;">
       <div class="form-group">
-        <label>אימייל תמיכה</label>
+        <label>Support Email</label>
         <input type="email" id="site-support-email" value="${getSiteEmailSettings().supportEmail || 'diggy-games@outlook.com'}" placeholder="diggy-games@outlook.com">
       </div>
       <div class="form-group">
-        <label>אימייל משפטי / DMCA</label>
+        <label>Legal Email / DMCA</label>
         <input type="email" id="site-legal-email" value="${getSiteEmailSettings().legalEmail || ''}" placeholder="legal@yourdomain.com">
       </div>
       <div class="form-group">
-        <label>אימייל התראות</label>
+        <label>Notification Email</label>
         <input type="email" id="site-notification-email" value="${getSiteEmailSettings().notificationEmail || ''}" placeholder="alerts@yourdomain.com">
       </div>
       <div class="form-group">
@@ -1814,33 +1814,33 @@ async function renderAdmin() {
         <input type="password" id="emailjs-public-key" value="${getResendConfigState().publicKey || ''}" placeholder="public_key">
       </div>
       <div class="form-group">
-        <label>שם שולח</label>
+        <label>Sender Name</label>
         <input type="text" id="emailjs-from-name" value="${getResendConfigState().fromName || 'DIGGY Games'}" placeholder="DIGGY Games">
       </div>
       <div class="form-group">
-        <label>כתובת תמיכה לאדמין</label>
+        <label>Admin Support Address</label>
         <input type="email" id="support-admin-email" value="${localStorage.getItem('diggy_support_admin_email') || 'diggy-games@outlook.com'}" placeholder="diggy-games@outlook.com">
       </div>
-      <button class="btn btn-primary" id="save-resend-config-btn" style="margin-top: 10px;"><i class="fas fa-save"></i> שמור הגדרות EmailJS</button>
-      <p style="margin-top: 10px; color: var(--text-muted); font-size: 13px;">ב-EmailJS יש ליצור Service, Template עם שדות: to_email, subject, message, message_html, reply_to, from_name.</p>
+      <button class="btn btn-primary" id="save-resend-config-btn" style="margin-top: 10px;"><i class="fas fa-save"></i> Save EmailJS Settings</button>
+      <p style="margin-top: 10px; color: var(--text-muted); font-size: 13px;">In EmailJS you need to create a Service and a Template with fields: to_email, subject, message, message_html, reply_to, from_name.</p>
     </div>
 
     <!-- Users Management Section -->
-    <div class="section-title">ניהול משתמשים ודרגות (חשבונות רשומים)</div>
+    <div class="section-title">User & Role Management (Registered Accounts)</div>
     <div class="data-table-container">
       <table class="data-table">
         <thead>
           <tr>
-            <th>שם משתמש</th>
-            <th>מזהה ייחודי (UID)</th>
-            <th>אימייל במערכת</th>
-            <th>דרגה / תפקיד (ROLE)</th>
-            <th>2FA / ביומטרי</th>
-            <th>תאריך רישום</th>
+            <th>Username</th>
+            <th>Unique ID (UID)</th>
+            <th>System Email</th>
+            <th>Role</th>
+            <th>2FA / Biometric</th>
+            <th>Registration Date</th>
           </tr>
         </thead>
         <tbody id="admin-users-list-body">
-          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">טוען רשימת משתמשים...</td></tr>
+          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading user list...</td></tr>
         </tbody>
       </table>
     </div>
@@ -1873,7 +1873,7 @@ async function renderAdmin() {
       if (adminEmail) {
         localStorage.setItem('diggy_support_admin_email', adminEmail);
       }
-      showToast('הגדרות EmailJS ואימיילים נשמרו.', 'success');
+      showToast('EmailJS and email settings saved.', 'success');
     });
   }
 
@@ -1883,23 +1883,23 @@ async function renderAdmin() {
     const devBody = document.getElementById('admin-dev-requests-body');
     
     if (devRequests.length === 0) {
-      devBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">אין פניות מפתחים פעילות.</td></tr>`;
+      devBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No active developer applications.</td></tr>`;
     } else {
       devBody.innerHTML = devRequests.map(req => {
         const isPending = req.status === 'pending';
         let statusText = '';
-        if (req.status === 'approved') statusText = '<span class="badge badge-approved">אושר</span>';
-        else if (req.status === 'rejected') statusText = '<span class="badge badge-rejected">נדחה</span>';
-        else statusText = '<span class="badge badge-pending">ממתין</span>';
+        if (req.status === 'approved') statusText = '<span class="badge badge-approved">Approved</span>';
+        else if (req.status === 'rejected') statusText = '<span class="badge badge-rejected">Rejected</span>';
+        else statusText = '<span class="badge badge-pending">Pending Review</span>';
 
-        const actionButtons = isPending 
+        const actionButtons = isPending
           ? `
             <div style="display: flex; gap: 8px;">
-              <button class="btn btn-primary admin-approve-dev" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-check"></i> אישור</button>
-              <button class="btn btn-danger admin-reject-dev" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-times"></i> דחייה</button>
+              <button class="btn btn-primary admin-approve-dev" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-check"></i> Approve</button>
+              <button class="btn btn-danger admin-reject-dev" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-times"></i> Reject</button>
             </div>
-          ` 
-          : `<span style="color: var(--text-dark); font-size: 12px;">נסגר</span>`;
+          `
+          : `<span style="color: var(--text-dark); font-size: 12px;">Closed</span>`;
 
         return `
           <tr>
@@ -1930,25 +1930,25 @@ async function renderAdmin() {
     const gameBody = document.getElementById('admin-game-requests-body');
 
     if (gameRequests.length === 0) {
-      gameBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">אין משחקים הממתינים לאישור.</td></tr>`;
+      gameBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No games pending approval.</td></tr>`;
     } else {
       gameBody.innerHTML = gameRequests.map(req => {
         const isPending = req.status === 'pending';
         let statusText = '';
-        if (req.status === 'approved') statusText = '<span class="badge badge-approved">אושר</span>';
-        else if (req.status === 'rejected') statusText = '<span class="badge badge-rejected">נדחה</span>';
-        else if (req.status === 'improvement') statusText = '<span class="badge badge-improvement">הצעת שיפור</span>';
+        if (req.status === 'approved') statusText = '<span class="badge badge-approved">Approved</span>';
+        else if (req.status === 'rejected') statusText = '<span class="badge badge-rejected">Rejected</span>';
+        else if (req.status === 'improvement') statusText = '<span class="badge badge-improvement">Needs Improvement</span>';
 
-        const typeBadge = req.type === 'version_update' 
-          ? `<span class="badge badge-pending" style="background: rgba(112, 214, 255, 0.15); color: #70d6ff; border-color: rgba(112,214,255,0.3); margin-top: 4px; display: inline-block;">עדכון גרסה (${req.version})</span>`
+        const typeBadge = req.type === 'version_update'
+          ? `<span class="badge badge-pending" style="background: rgba(112, 214, 255, 0.15); color: #70d6ff; border-color: rgba(112,214,255,0.3); margin-top: 4px; display: inline-block;">Version Update (${req.version})</span>`
           : '';
 
-        const actionButtons = isPending 
+        const actionButtons = isPending
           ? `
             <div style="display: flex; gap: 6px; flex-direction: column;">
-              <button class="btn btn-primary admin-approve-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px; justify-content: center;"><i class="fas fa-check"></i> אישור והעלאה</button>
-              <button class="btn btn-secondary admin-improve-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px; justify-content: center; border-color: #0096ff; color: #0096ff;"><i class="fas fa-comment-dots"></i> הצעות לשיפור</button>
-              <button class="btn btn-danger admin-reject-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px; justify-content: center;"><i class="fas fa-times"></i> דחייה מוחלטת</button>
+              <button class="btn btn-primary admin-approve-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px; justify-content: center;"><i class="fas fa-check"></i> Approve & Publish</button>
+              <button class="btn btn-secondary admin-improve-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px; justify-content: center; border-color: #0096ff; color: #0096ff;"><i class="fas fa-comment-dots"></i> Needs Improvement</button>
+              <button class="btn btn-danger admin-reject-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px; justify-content: center;"><i class="fas fa-times"></i> Reject</button>
             </div>
           `
           : `<div style="display: flex; flex-direction: column; gap: 4px;">${statusText}<span style="color: var(--text-muted); font-size: 11px;">${req.adminSuggestions || ''}</span></div>`;
@@ -1961,16 +1961,16 @@ async function renderAdmin() {
                 <img src="${req.logoUrl}" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
                 <div>
                   <div style="font-weight: bold; color: var(--accent-color);">${req.name} ${typeBadge}</div>
-                  <div style="font-size: 11px; color: var(--text-muted);">איך משחקים: ${req.howToPlay}</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">How to play: ${req.howToPlay}</div>
                 </div>
               </div>
             </td>
             <td>${req.categories ? req.categories.join(', ') : ''}</td>
-            <td><a href="${req.githubUrl}" target="_blank" style="color: #0096ff; text-decoration: underline; font-size: 12px;">מקור קוד</a></td>
+            <td><a href="${req.githubUrl}" target="_blank" style="color: #0096ff; text-decoration: underline; font-size: 12px;">Source Code</a></td>
             <td>
               ${req.type === 'version_update'
-                ? `<div style="font-size: 12px; color: var(--accent-color);"><strong>מה חדש בגרסה:</strong> ${req.changelog}</div>`
-                : `<div style="font-size: 12px;"><strong>מיועד ל:</strong> ${req.targetAudience}</div>
+                ? `<div style="font-size: 12px; color: var(--accent-color);"><strong>What's new in this version:</strong> ${req.changelog}</div>`
+                : `<div style="font-size: 12px;"><strong>Intended for:</strong> ${req.targetAudience}</div>
                    <div style="font-size: 12px; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${req.description}</div>`
               }
             </td>
@@ -1999,12 +1999,12 @@ async function renderAdmin() {
     const usersBody = document.getElementById('admin-users-list-body');
     
     if (allUsers.length === 0) {
-      usersBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">לא נמצאו חשבונות רשומים.</td></tr>`;
+      usersBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No registered accounts found.</td></tr>`;
     } else {
       usersBody.innerHTML = allUsers.map(u => {
-        const registrationDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'לא ידוע';
-        const twoFaBadge = u.twoFactorEnabled ? '<span style="color: var(--accent-color); font-size: 11px;"><i class="fas fa-check-circle"></i> פעיל</span>' : '<span style="color: var(--text-dark); font-size: 11px;">כבוי</span>';
-        const bioBadge = u.biometricsEnabled ? '<span style="color: var(--accent-color); font-size: 11px;"><i class="fas fa-check-circle"></i> פעיל</span>' : '<span style="color: var(--text-dark); font-size: 11px;">כבוי</span>';
+        const registrationDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'Unknown';
+        const twoFaBadge = u.twoFactorEnabled ? '<span style="color: var(--accent-color); font-size: 11px;"><i class="fas fa-check-circle"></i> Active</span>' : '<span style="color: var(--text-dark); font-size: 11px;">Off</span>';
+        const bioBadge = u.biometricsEnabled ? '<span style="color: var(--accent-color); font-size: 11px;"><i class="fas fa-check-circle"></i> Active</span>' : '<span style="color: var(--text-dark); font-size: 11px;">Off</span>';
 
         return `
           <tr>
@@ -2038,7 +2038,7 @@ async function renderAdmin() {
           showLoader(true);
           try {
             await changeUserRole(uid, newRole);
-            showToast(`דרגת המשתמש עודכנה ל-${newRole.toUpperCase()} בהצלחה!`, "success");
+            showToast(`User role updated to ${newRole.toUpperCase()} successfully!`, "success");
             // If the user modified their own role, update state
             if (state.user && state.user.uid === uid) {
               state.user.role = newRole;
@@ -2046,7 +2046,7 @@ async function renderAdmin() {
             }
             renderAdmin(); // Refresh dashboard
           } catch (e) {
-            showToast("עדכון הדרגה נכשל: " + e.message, "danger");
+            showToast("Role update failed: " + e.message, "danger");
           } finally {
             showLoader(false);
           }
@@ -2065,21 +2065,21 @@ function openAdminReasonModal(requestId, status, type) {
   const modalTitle = document.getElementById('modal-title');
   const modalBody = document.getElementById('modal-body');
 
-  modalTitle.textContent = "הזנת הסבר מנהל מערכת (Admin Action)";
-  
-  let labelText = "רשום סיבה או הצעות לשיפור שיועברו למשתמש:";
-  if (status === 'approved') labelText = "הערות אישור (יופיעו במייל):";
-  else if (status === 'rejected') labelText = "סיבת סירוב (יופיע במייל - המשתמש לא יוכל להגיש שוב):";
-  else if (status === 'improvement') labelText = "פרט את ההצעות לשיפור ושינויים שנדרשים מהמפתח:";
+  modalTitle.textContent = "Enter Admin Explanation (Admin Action)";
+
+  let labelText = "Write a reason or improvement suggestions to send to the user:";
+  if (status === 'approved') labelText = "Approval notes (will appear in the email):";
+  else if (status === 'rejected') labelText = "Rejection reason (will appear in the email - the user won't be able to resubmit):";
+  else if (status === 'improvement') labelText = "Detail the improvement suggestions and changes required from the developer:";
 
   modalBody.innerHTML = `
     <form id="admin-reason-form">
       <div class="form-group">
         <label>${labelText}</label>
-        <textarea id="admin-notes" required placeholder="הזן כאן את הטקסט..." rows="4"></textarea>
+        <textarea id="admin-notes" required placeholder="Enter text here..." rows="4"></textarea>
       </div>
       <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
-        <i class="fas fa-check-double"></i> בצע פעולה ושלח מייל
+        <i class="fas fa-check-double"></i> Perform Action & Send Email
       </button>
     </form>
   `;
@@ -2094,10 +2094,10 @@ function openAdminReasonModal(requestId, status, type) {
     try {
       if (type === 'dev') {
         await handleDeveloperRequest(requestId, status, reason);
-        showToast("בקשת המפתח עודכנה והמייל נשלח בהצלחה!", "success");
+        showToast("Developer request updated and email sent successfully!", "success");
       } else if (type === 'game') {
         await handleGameRequest(requestId, status, reason);
-        showToast("בקשת המשחק עודכנה והמייל נשלח בהצלחה!", "success");
+        showToast("Game request updated and email sent successfully!", "success");
       }
       
       overlay.classList.remove('active');
@@ -2116,40 +2116,40 @@ function openAdminDirectUploadModal() {
   const modalTitle = document.getElementById('modal-title');
   const modalBody = document.getElementById('modal-body');
 
-  modalTitle.textContent = "העלאה ישירה של משחק (Admin Bypass)";
-  
+  modalTitle.textContent = "Direct Game Upload (Admin Bypass)";
+
   modalBody.innerHTML = `
     <form id="admin-direct-upload-form">
       <div class="form-group">
-        <label>שם המשחק</label>
-        <input type="text" id="direct-name" required placeholder="לדוגמה: אלוף המבוכים">
+        <label>Game Name</label>
+        <input type="text" id="direct-name" required placeholder="e.g. Dungeon Champion">
       </div>
       <div class="form-group">
-        <label>תיאור</label>
-        <textarea id="direct-desc" required placeholder="תיאור קצר..." rows="2"></textarea>
+        <label>Description</label>
+        <textarea id="direct-desc" required placeholder="Short description..." rows="2"></textarea>
       </div>
       <div class="form-group">
-        <label>קישור ללוגו (URL)</label>
+        <label>Logo Link (URL)</label>
         <input type="url" id="direct-logo" required placeholder="https://example.com/logo.png">
       </div>
       <div class="form-group">
-        <label>קישור למאגר GitHub</label>
-        <input type="url" id="direct-github" required placeholder="https://github.com/... (אופציונלי)">
+        <label>GitHub Repo Link</label>
+        <input type="url" id="direct-github" required placeholder="https://github.com/... (optional)">
       </div>
       <div class="form-group">
-        <label>קישור למשחק פעיל (Playable URL / GitHub Pages / iframe)</label>
+        <label>Playable Game Link (Playable URL / GitHub Pages / iframe)</label>
         <input type="url" id="direct-url" required placeholder="https://username.github.io/my-game/">
       </div>
       <div class="form-group">
-        <label>הוראות משחק</label>
-        <textarea id="direct-how" required placeholder="איך משחקים..." rows="2"></textarea>
+        <label>Game Instructions</label>
+        <textarea id="direct-how" required placeholder="How to play..." rows="2"></textarea>
       </div>
       <div class="form-group">
-        <label>קהל יעד</label>
-        <input type="text" id="direct-audience" required placeholder="לדוגמה: לכולם">
+        <label>Target Audience</label>
+        <input type="text" id="direct-audience" required placeholder="e.g. Everyone">
       </div>
       <div class="form-group">
-        <label>קטגוריות (סמן עד 3)</label>
+        <label>Categories (select up to 3)</label>
         <div class="category-checkbox-grid">
           <label class="category-checkbox-label">
             <input type="checkbox" name="direct-cats" value="RPG"> RPG
@@ -2175,7 +2175,7 @@ function openAdminDirectUploadModal() {
         </div>
       </div>
       <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 15px;">
-        <i class="fas fa-cloud-upload-alt"></i> פרסם מיידית באתר
+        <i class="fas fa-cloud-upload-alt"></i> Publish Immediately
       </button>
     </form>
   `;
@@ -2196,11 +2196,11 @@ function openAdminDirectUploadModal() {
 
     const checkedBoxes = form.querySelectorAll('input[name="direct-cats"]:checked');
     if (checkedBoxes.length === 0) {
-      showToast("בחר לפחות קטגוריה אחת!", "warning");
+      showToast("Select at least one category!", "warning");
       return;
     }
     if (checkedBoxes.length > 3) {
-      showToast("ניתן לבחור עד 3 קטגוריות בלבד!", "warning");
+      showToast("You can select up to 3 categories only!", "warning");
       return;
     }
     const categories = Array.from(checkedBoxes).map(cb => cb.value);
@@ -2221,7 +2221,7 @@ function openAdminDirectUploadModal() {
     showLoader(true);
     try {
       await directPublishGame(gamePayload);
-      showToast("המשחק פורסם בהצלחה באתר ללא צורך באישור! 🎉", "success");
+      showToast("Game published successfully without needing approval! 🎉", "success");
       overlay.classList.remove('active');
       await fetchGames();
       renderAdmin();
@@ -2239,7 +2239,7 @@ async function renderGameDetails(gameId) {
 
   const game = state.games.find(g => g.id === gameId);
   if (!game) {
-    main.innerHTML = `<div style="text-align: center; padding: 80px 0;"><h2>משחק לא נמצא!</h2></div>`;
+    main.innerHTML = `<div style="text-align: center; padding: 80px 0;"><h2>Game not found!</h2></div>`;
     return;
   }
 
@@ -2258,7 +2258,7 @@ async function renderGameDetails(gameId) {
 
   main.innerHTML = `
     <div style="margin-bottom: 20px;">
-      <a href="#/" style="color: var(--accent-color); font-size: 14px;"><i class="fas fa-chevron-right"></i> חזרה לכל המשחקים</a>
+      <a href="#/" style="color: var(--accent-color); font-size: 14px;"><i class="fas fa-chevron-left"></i> Back to All Games</a>
     </div>
 
     <div class="game-play-area">
@@ -2266,13 +2266,13 @@ async function renderGameDetails(gameId) {
       <div class="game-screen-panel">
         <div class="game-screen-header">
           <h2 style="font-size: 20px; color: var(--accent-color);">${game.name}</h2>
-          <span style="font-size: 13px; color: var(--text-muted); font-family: var(--font-display);" id="game-score-display">ניקוד: 0</span>
+          <span style="font-size: 13px; color: var(--text-muted); font-family: var(--font-display);" id="game-score-display">Score: 0</span>
         </div>
         <div class="game-canvas-container">
           <div class="game-menu-overlay" id="game-menu-overlay">
             <h3 class="game-menu-title">${game.name}</h3>
             <p style="color: var(--text-muted); font-size: 14px; max-width: 380px; text-align: center; line-height: 1.5;">${game.howToPlay}</p>
-            <button class="btn btn-primary" id="start-game-btn"><i class="fas fa-gamepad"></i> התחל משחק!</button>
+            <button class="btn btn-primary" id="start-game-btn"><i class="fas fa-gamepad"></i> Start Game!</button>
           </div>
           <!-- Game Canvas -->
           <canvas id="retro-game-canvas" width="600" height="400" style="display: none;"></canvas>
@@ -2288,24 +2288,24 @@ async function renderGameDetails(gameId) {
         </div>
         
         <div class="game-meta-item">
-          <span class="game-meta-label">מפתח</span>
+          <span class="game-meta-label">Developer</span>
           <span class="game-meta-val" style="font-weight: bold; color: var(--accent-color);">${game.developerName}</span>
         </div>
 
         <div class="game-meta-item">
-          <span class="game-meta-label">קטגוריות</span>
+          <span class="game-meta-label">Categories</span>
           <div style="display: flex; gap: 5px;">
             ${game.categories.map(c => `<span class="game-tag" style="background: var(--accent-dim); color: var(--accent-color);">${c}</span>`).join('')}
           </div>
         </div>
 
         <div class="game-meta-item">
-          <span class="game-meta-label">קהל יעד</span>
+          <span class="game-meta-label">Target Audience</span>
           <span class="game-meta-val">${game.targetAudience}</span>
         </div>
 
         <div class="game-meta-item">
-          <span class="game-meta-label">דירוג שחקנים</span>
+          <span class="game-meta-label">Player Rating</span>
           <div id="game-rating-display"></div>
         </div>
 
@@ -2316,7 +2316,7 @@ async function renderGameDetails(gameId) {
         <hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.05);">
 
         <div class="game-meta-item">
-          <span class="game-meta-label">תיאור המשחק</span>
+          <span class="game-meta-label">Game Description</span>
           <p style="font-size: 13px; line-height: 1.5; color: var(--text-muted);">${game.description}</p>
         </div>
       </div>
@@ -2440,8 +2440,8 @@ function launchSnakeGame(canvas) {
       if (cell.x === apple.x && cell.y === apple.y) {
         snake.maxCells++;
         score += 10;
-        scoreDisplay.textContent = `ניקוד: ${score}`;
-        
+        scoreDisplay.textContent = `Score: ${score}`;
+
         apple.x = getRandomInt(0, canvas.width / grid) * grid;
         apple.y = getRandomInt(0, canvas.height / grid) * grid;
       }
@@ -2478,8 +2478,8 @@ function launchSnakeGame(canvas) {
     
     ctx.fillStyle = '#ffffff';
     ctx.font = '14px Outfit';
-    ctx.fillText(`ניקוד סופי: ${score}`, canvas.width/2, canvas.height/2 + 10);
-    ctx.fillText('לחץ שוב על כפתור התחל כדי לנסות שנית', canvas.width/2, canvas.height/2 + 40);
+    ctx.fillText(`Final Score: ${score}`, canvas.width/2, canvas.height/2 + 10);
+    ctx.fillText('Press Start again to try once more', canvas.width/2, canvas.height/2 + 40);
   }
 
   return {
@@ -2554,7 +2554,7 @@ function launchBricksGame(canvas) {
             ball.dy = -ball.dy;
             b.status = 0;
             score += 15;
-            scoreDisplay.textContent = `ניקוד: ${score}`;
+            scoreDisplay.textContent = `Score: ${score}`;
             if (score === brickRowCount * brickColumnCount * 15) {
               winGame();
             }
@@ -2646,8 +2646,8 @@ function launchBricksGame(canvas) {
     ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2 - 20);
     ctx.fillStyle = '#ffffff';
     ctx.font = '14px Outfit';
-    ctx.fillText(`ניקוד סופי: ${score}`, canvas.width/2, canvas.height/2 + 10);
-    ctx.fillText('נסה שנית!', canvas.width/2, canvas.height/2 + 40);
+    ctx.fillText(`Final Score: ${score}`, canvas.width/2, canvas.height/2 + 10);
+    ctx.fillText('Try again!', canvas.width/2, canvas.height/2 + 40);
   }
 
   function winGame() {
@@ -2660,7 +2660,7 @@ function launchBricksGame(canvas) {
     ctx.textAlign = 'center';
     ctx.fillText('YOU WIN!', canvas.width/2, canvas.height/2 - 20);
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`ניקוד סופי: ${score}`, canvas.width/2, canvas.height/2 + 10);
+    ctx.fillText(`Final Score: ${score}`, canvas.width/2, canvas.height/2 + 10);
   }
 
   return {
@@ -2779,7 +2779,7 @@ function launchEvaderGame(canvas) {
           enemies.splice(eIdx, 1);
           lasers.splice(lIdx, 1);
           score += 20;
-          scoreDisplay.textContent = `ניקוד: ${score}`;
+          scoreDisplay.textContent = `Score: ${score}`;
         }
       });
 
@@ -2803,8 +2803,8 @@ function launchEvaderGame(canvas) {
     ctx.fillText('SPACE SHUTTLE CRASHED', canvas.width/2, canvas.height/2 - 20);
     ctx.fillStyle = '#ffffff';
     ctx.font = '14px Outfit';
-    ctx.fillText(`ניקוד סופי: ${score}`, canvas.width/2, canvas.height/2 + 10);
-    ctx.fillText('נסה שנית!', canvas.width/2, canvas.height/2 + 40);
+    ctx.fillText(`Final Score: ${score}`, canvas.width/2, canvas.height/2 + 10);
+    ctx.fillText('Try again!', canvas.width/2, canvas.height/2 + 40);
   }
 
   return {
@@ -2824,9 +2824,9 @@ export function renderSettings() {
   if (!state.user) {
     main.innerHTML = `
       <div style="text-align: center; padding: 80px 0;">
-        <h2>גישה מוגבלת</h2>
-        <p style="color: var(--text-muted); margin-top: 10px;">עלייך להתחבר למערכת כדי לגשת להגדרות.</p>
-        <button class="btn btn-primary" onclick="window.location.hash='#/login'" style="margin-top: 20px;">התחבר עכשיו</button>
+        <h2>Restricted Access</h2>
+        <p style="color: var(--text-muted); margin-top: 10px;">You must log in to access settings.</p>
+        <button class="btn btn-primary" onclick="window.location.hash='#/login'" style="margin-top: 20px;">Log In Now</button>
       </div>
     `;
     return;
@@ -2835,8 +2835,8 @@ export function renderSettings() {
   main.innerHTML = `
     <div class="top-header">
       <div class="page-title-wrap">
-        <h1>הגדרות חשבון והתאמה אישית</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">נהל את פרטי החשבון והתאם את תצוגת האתר לטעמך</p>
+        <h1>Account Settings & Personalization</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">Manage your account details and customize the site's look to your taste</p>
       </div>
     </div>
 
@@ -2848,10 +2848,10 @@ export function renderSettings() {
             <div style="width: 100%; padding: 14px 16px; border-radius: 12px; background: ${requirementStatus.complete ? 'rgba(0,255,102,0.08)' : 'rgba(255,170,0,0.12)'}; border: 1px solid ${requirementStatus.complete ? 'rgba(0,255,102,0.25)' : 'rgba(255,170,0,0.25)'}; margin-bottom: 20px;">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                 <i class="fas ${requirementStatus.complete ? 'fa-shield-alt' : 'fa-exclamation-triangle'}" style="color: ${requirementStatus.complete ? 'var(--accent-color)' : '#ffaa00'};"></i>
-                <strong style="font-size: 14px;">${requirementStatus.complete ? 'החשבון מוכן לשימוש' : 'נדרשות הגדרות אבטחה לפיתוח/ניהול'}</strong>
+                <strong style="font-size: 14px;">${requirementStatus.complete ? 'Account ready to use' : 'Security settings required for development/admin'}</strong>
               </div>
               <div style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
-                ${requirementStatus.complete ? 'כל הדרישות הושלמו ותוכל להמשיך לעבוד עם החשבון.' : `לפני המשך העבודה יש להשלים:${requirementStatus.missingItems.includes('twoFactor') ? '<br>• הפעלת אימות דו-שלבי' : ''}${requirementStatus.missingItems.includes('supportEmail') ? '<br>• הזנת כתובת תמיכה פנימית' : ''}`}
+                ${requirementStatus.complete ? 'All requirements completed and you can continue working with your account.' : `Before continuing, you must complete:${requirementStatus.missingItems.includes('twoFactor') ? '<br>• Enable two-factor authentication' : ''}${requirementStatus.missingItems.includes('supportEmail') ? '<br>• Enter an internal support email' : ''}`}
               </div>
             </div>
           `;
@@ -2862,26 +2862,26 @@ export function renderSettings() {
       <!-- Profile settings card -->
       <div class="settings-card" style="flex: 1; min-width: 320px; max-width: 500px;">
         <div class="settings-card-header">
-          <h2 class="settings-card-title">פרטי פרופיל</h2>
+          <h2 class="settings-card-title">Profile Details</h2>
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label>שם משתמש</label>
+            <label>Username</label>
             <input type="text" id="settings-username" value="${state.user.username}">
           </div>
           <div class="form-group">
-            <label>אימייל משויך</label>
+            <label>Associated Email</label>
             <input type="text" value="${state.user.email}" disabled style="background: rgba(255,255,255,0.02); color: var(--text-muted);">
           </div>
           <div class="form-group">
-            <label>תפקיד משתמש (ROLE)</label>
+            <label>User Role (ROLE)</label>
             <div style="font-weight: bold; color: var(--accent-color); font-family: var(--font-display); font-size: 16px;">
               ${state.user.role.toUpperCase()}
             </div>
           </div>
-          
+
           <button class="btn btn-primary" id="save-profile-btn" style="width: 100%; justify-content: center; margin-top: 10px;">
-            עדכן שם משתמש
+            Update Username
           </button>
         </div>
       </div>
@@ -2889,30 +2889,30 @@ export function renderSettings() {
       <!-- Security / Auth card -->
       <div class="settings-card" style="flex: 1; min-width: 320px; max-width: 500px;">
         <div class="settings-card-header">
-          <h2 class="settings-card-title">אבטחה וסיסמאות</h2>
+          <h2 class="settings-card-title">Security & Passwords</h2>
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label>שינוי סיסמה (6-12 תווים)</label>
-            <input type="password" id="settings-new-password" placeholder="הזן סיסמה חדשה">
+            <label>Change Password (6-12 characters)</label>
+            <input type="password" id="settings-new-password" placeholder="Enter new password">
           </div>
           <button class="btn btn-secondary" id="change-pass-btn" style="width: 100%; justify-content: center; margin-bottom: 25px;">
-            שנה סיסמה
+            Change Password
           </button>
 
           <!-- 2FA Setup -->
           <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px; margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <strong style="display: block; font-size: 14px;">אימות דו-שלבי במייל (2FA)</strong>
-                <span style="font-size: 12px; color: var(--text-muted);">שלח קוד אבטחה בכל חיבור</span>
+                <strong style="display: block; font-size: 14px;">Two-Factor Email Authentication (2FA)</strong>
+                <span style="font-size: 12px; color: var(--text-muted);">Send a security code on every login</span>
               </div>
               <input type="checkbox" id="settings-2fa-toggle" ${state.user.twoFactorEnabled ? 'checked' : ''} style="width: 20px; height: 20px; accent-color: var(--accent-color); cursor: pointer;">
             </div>
-            
+
             <div id="settings-2fa-email-group" style="display: ${state.user.twoFactorEnabled ? 'block' : 'none'}; margin-top: 15px;">
               <div class="form-group">
-                <label>כתובת אימייל לשליחת הקוד</label>
+                <label>Email Address to Send the Code</label>
                 <input type="email" id="settings-2fa-email" value="${state.user.twoFactorEmail || ''}" placeholder="myemail@example.com">
               </div>
             </div>
@@ -2920,7 +2920,7 @@ export function renderSettings() {
             ${isPrivilegedRole(state.user.role) ? `
               <div style="margin-top: 15px;">
                 <div class="form-group">
-                  <label>כתובת תמיכה פנימית (למפתח/Admin)</label>
+                  <label>Internal Support Email (for Developer/Admin)</label>
                   <input type="email" id="settings-support-email" value="${state.user.supportEmail || ''}" placeholder="support@yourdomain.com">
                 </div>
               </div>
@@ -2931,15 +2931,15 @@ export function renderSettings() {
           <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
               <div>
-                <strong style="display: block; font-size: 14px;">זיהוי ביומטרי מהיר (WebAuthn)</strong>
-                <span style="font-size: 12px; color: var(--text-muted);">השתמש בטביעת אצבע/FaceID של המכשיר לכניסה</span>
+                <strong style="display: block; font-size: 14px;">Quick Biometric Login (WebAuthn)</strong>
+                <span style="font-size: 12px; color: var(--text-muted);">Use your device's fingerprint/FaceID to log in</span>
               </div>
               <span id="bio-setup-status" style="font-size: 11px; font-family: var(--font-display); color: ${state.user.biometricsEnabled ? 'var(--accent-color)' : 'var(--text-muted)'};">
-                ${state.user.biometricsEnabled ? 'מופעל' : 'לא מוגדר'}
+                ${state.user.biometricsEnabled ? 'Enabled' : 'Not Set Up'}
               </span>
             </div>
             <button class="btn btn-secondary" id="register-biometric-btn" style="width: 100%; justify-content: center;">
-              <i class="fas fa-fingerprint"></i> ${state.user.biometricsEnabled ? 'הגדר ביומטרי מחדש' : 'הפעל זיהוי ביומטרי'}
+              <i class="fas fa-fingerprint"></i> ${state.user.biometricsEnabled ? 'Set Up Biometrics Again' : 'Enable Biometric Login'}
             </button>
           </div>
         </div>
@@ -2948,10 +2948,10 @@ export function renderSettings() {
       <!-- Display Theme Personalization -->
       <div class="settings-card" style="flex: 1; min-width: 320px; max-width: 100%;">
         <div class="settings-card-header">
-          <h2 class="settings-card-title">התאמת תצוגה</h2>
+          <h2 class="settings-card-title">Display Customization</h2>
         </div>
         <div class="modal-body">
-          <label style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-display);">בחר את צבע הניאון המועדף עליך:</label>
+          <label style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-display);">Choose your preferred neon color:</label>
           <div class="color-picker-grid">
             <div class="color-picker-btn ${state.theme === '#00ff66' ? 'active' : ''}" style="background: #00ff66;" data-color="#00ff66"></div>
             <div class="color-picker-btn ${state.theme === '#ff3366' ? 'active' : ''}" style="background: #ff3366;" data-color="#ff3366"></div>
@@ -2967,30 +2967,30 @@ export function renderSettings() {
     ${state.user.role === 'player' ? `
       <div class="settings-card" style="margin-top: 30px; max-width: 100%;">
         <div class="settings-card-header" style="border-left: 4px solid var(--accent-color); padding-left: 10px;">
-          <h2 class="settings-card-title">בקשה להפיכה למפתח משחקים ב-DIGGY</h2>
+          <h2 class="settings-card-title">Request to Become a DIGGY Game Developer</h2>
         </div>
         <div class="modal-body">
           <form id="dev-application-form">
             <p style="font-size: 14px; margin-bottom: 20px; color: var(--text-muted);">
-              רוצה להעלות את משחקי ה-GitHub שלך לאתר שילדים מכל העולם ישחקו בהם? מלא את הבקשה הבאה והיא תישלח לצוות ה-Admin.
+              Want to upload your GitHub games to a site where kids from all over the world will play them? Fill out the following request and it will be sent to the Admin team.
             </p>
             <div class="form-group">
-              <label>סיבה (מדוע תרצה להיות מפתח באתר ואיזה משחקים תרצה להעלות?)</label>
-              <textarea id="dev-app-reason" required placeholder="אני רוצה להיות מפתח כי..." rows="3"></textarea>
+              <label>Reason (why would you like to be a developer on the site and which games would you like to upload?)</label>
+              <textarea id="dev-app-reason" required placeholder="I want to be a developer because..." rows="3"></textarea>
             </div>
             <div style="display: flex; gap: 20px; flex-wrap: wrap;">
               <div class="form-group" style="flex: 1; min-width: 220px;">
-                <label>אימייל אבטחה (לשליחת הודעת אישור / דחייה מעוצבת)</label>
+                <label>Security Email (to send a styled approval / rejection notice)</label>
                 <input type="email" id="dev-app-email" required placeholder="name@example.com">
               </div>
               <div class="form-group" style="flex: 1; min-width: 220px;">
-                <label>סיסמת אימות (לאבטחת הבקשה)</label>
-                <input type="password" id="dev-app-pass" required placeholder="הזן את סיסמת החשבון הנוכחי">
+                <label>Verification Password (to secure the request)</label>
+                <input type="password" id="dev-app-pass" required placeholder="Enter your current account password">
               </div>
             </div>
 
             <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
-              <i class="fas fa-file-signature"></i> הגש בקשת מפתח
+              <i class="fas fa-file-signature"></i> Submit Developer Request
             </button>
           </form>
         </div>
@@ -3013,7 +3013,7 @@ export function renderSettings() {
       await updateUserProfile(state.user.uid, { username: newUsername });
       state.user.username = newUsername;
       renderUserBadge();
-      showToast("שם המשתמש עודכן בהצלחה!", "success");
+      showToast("Username updated successfully!", "success");
     } catch (e) {
       showToast(e.message, "danger");
     } finally {
@@ -3034,7 +3034,7 @@ export function renderSettings() {
     showLoader(true);
     try {
       await changeUserPassword(newPass);
-      showToast("הסיסמה שונתה בהצלחה!", "success");
+      showToast("Password changed successfully!", "success");
       document.getElementById('settings-new-password').value = "";
     } catch (e) {
       showToast(e.message, "danger");
@@ -3056,14 +3056,14 @@ export function renderSettings() {
       if (isPrivilegedRole(state.user.role)) {
         toggle2fa.checked = true;
         group2fa.style.display = 'block';
-        showToast("למשתמשי מפתח/Admin חובה להפעיל אימות דו-שלבי.", "danger");
+        showToast("Developer/Admin users are required to enable two-factor authentication.", "danger");
         return;
       }
 
       showLoader(true);
       await updateUserProfile(state.user.uid, { twoFactorEnabled: false });
       state.user.twoFactorEnabled = false;
-      showToast("אימות דו-שלבי בוטל.", "info");
+      showToast("Two-factor authentication disabled.", "info");
       showLoader(false);
     } else {
       let val = sanitizeInput(input2faEmail.value.trim());
@@ -3095,7 +3095,7 @@ export function renderSettings() {
   input2faEmail.addEventListener('change', async () => {
     const val = sanitizeInput(input2faEmail.value.trim());
     if (!val) {
-      showToast("יש להזין כתובת אימייל לשליחת הקוד", "danger");
+      showToast("You must enter an email address to send the code", "danger");
       return;
     }
 
@@ -3112,7 +3112,7 @@ export function renderSettings() {
     });
     state.user.twoFactorEnabled = true;
     state.user.twoFactorEmail = val;
-    showToast("כתובת אימות דו-שלבי עודכנה!", "success");
+    showToast("Two-factor verification email updated!", "success");
     showLoader(false);
   });
 
@@ -3121,7 +3121,7 @@ export function renderSettings() {
     inputSupportEmail.addEventListener('change', async () => {
       const val = sanitizeInput(inputSupportEmail.value.trim());
       if (!val) {
-        showToast("יש להזין כתובת תמיכה פנימית", "danger");
+        showToast("You must enter an internal support email", "danger");
         return;
       }
 
@@ -3134,7 +3134,7 @@ export function renderSettings() {
       showLoader(true);
       await updateUserProfile(state.user.uid, { supportEmail: val });
       state.user.supportEmail = val;
-      showToast("כתובת התמיכה נשמרה בהצלחה!", "success");
+      showToast("Support email saved successfully!", "success");
       showLoader(false);
     });
   }
@@ -3151,7 +3151,7 @@ export function renderSettings() {
       state.user.customTheme = color;
       applyTheme(color);
       showLoader(false);
-      showToast("ערכת העיצוב הניאונית עודכנה!", "success");
+      showToast("Neon theme updated!", "success");
     });
   });
 
@@ -3173,12 +3173,12 @@ export function renderSettings() {
         });
 
         state.user.biometricsEnabled = true;
-        document.getElementById('bio-setup-status').textContent = 'מופעל';
+        document.getElementById('bio-setup-status').textContent = 'Enabled';
         document.getElementById('bio-setup-status').style.color = 'var(--accent-color)';
-        showToast("זיהוי ביומטרי הופעל בהצלחה עבור מכשיר זה! 🔒", "success");
+        showToast("Biometric login enabled successfully for this device! 🔒", "success");
       }
     } catch (e) {
-      showToast("שגיאה ברישום ביומטרי: " + e.message, "danger");
+      showToast("Error registering biometrics: " + e.message, "danger");
     } finally {
       showLoader(false);
     }
@@ -3194,14 +3194,14 @@ export function renderSettings() {
       const pass = document.getElementById('dev-app-pass').value;
 
       if (pass.length < 6 || pass.length > 12) {
-        showToast("הזן סיסמת אימות תקינה (6-12 תווים)!", "danger");
+        showToast("Enter a valid verification password (6-12 characters)!", "danger");
         return;
       }
 
       showLoader(true);
       try {
         await submitDeveloperRequest(state.user.uid, state.user.username, reason, email);
-        showToast("בקשת המפתח נשלחה בהצלחה! מייל עיצוב יישלח אלייך עם החלטת ה-Admin. 📬", "success");
+        showToast("Developer request sent successfully! A styled email will be sent to you with the Admin's decision. 📬", "success");
         renderSettings(); // refresh form
       } catch (err) {
         showToast(err.message, "danger");
@@ -3241,7 +3241,7 @@ function renderUserBadge() {
   } else {
     container.innerHTML = `
       <button class="btn btn-secondary" onclick="window.location.hash='#/login'" style="width: 100%; justify-content: center; padding: 10px;">
-        <i class="fas fa-sign-in-alt"></i> התחבר / הרשם
+        <i class="fas fa-sign-in-alt"></i> Log In / Sign Up
       </button>
     `;
   }
@@ -3329,113 +3329,113 @@ document.getElementById('settings-nav-btn').addEventListener('click', () => {
 // --- PUBLIC ARTICLES ---
 const PUBLIC_ARTICLES = {
   'welcome': {
-    title: 'ברוכים הבאים ל-DIGGY Arena',
-    date: '15 יוני 2026',
+    title: 'Welcome to DIGGY Arena',
+    date: 'June 15, 2026',
     icon: 'fa-rocket',
-    excerpt: 'גלו את עולם המשחקים החדש לילדים — ארקייד, רטרו וקז\'ואל במקום אחד.',
+    excerpt: 'Discover the new gaming world for kids — arcade, retro, and casual all in one place.',
     content: `
-      <p>ברוכים הבאים ל-<strong>DIGGY Arena</strong> — פלטפורמת המשחקים המובילה לילדים ולנוער בישראל. כאן תמצאו מגוון רחב של משחקי ארקייד, רטרו וקז\'ואל שפותחו על ידי מפתחים מקומיים ובינלאומיים.</p>
-      <h3>מה מחכה לכם?</h3>
+      <p>Welcome to <strong>DIGGY Arena</strong> — the leading gaming platform for kids and teens. Here you'll find a wide range of arcade, retro, and casual games developed by local and international developers.</p>
+      <h3>What awaits you?</h3>
       <ul>
-        <li>משחקים חינמיים לחלוטין — ללא פרסומות</li>
-        <li>קטגוריות מגוונות: RPG, RETRO, ACTION, PUZZLE ועוד</li>
-        <li>מערכת דירוג כוכבים לכל משחק</li>
-        <li>אפשרות לשמור משחקים מועדפים (לאחר הרשמה)</li>
+        <li>Completely free games — no ads</li>
+        <li>Diverse categories: RPG, RETRO, ACTION, PUZZLE, and more</li>
+        <li>A star rating system for every game</li>
+        <li>The ability to save favorite games (after signing up)</li>
       </ul>
-      <p>הירשמו בחינם, בחרו משחק מהקטלוג, ותתחילו לשחק!</p>
+      <p>Sign up for free, pick a game from the catalog, and start playing!</p>
     `
   },
   'safe-gaming': {
-    title: 'משחקים בטוחים ברשת — מדריך לילדים',
-    date: '10 יוני 2026',
+    title: 'Safe Gaming Online — A Guide for Kids',
+    date: 'June 10, 2026',
     icon: 'fa-shield-alt',
-    excerpt: 'טיפים חשובים לשחק בצורה בטוחה ומהנה באינטרנט.',
+    excerpt: 'Important tips for playing safely and enjoyably online.',
     content: `
-      <p>האינטרנט הוא מקום מדהים לשחק וללמוד, אבל חשוב לשחק בחוכמה. הנה כמה כללים בסיסיים:</p>
+      <p>The internet is an amazing place to play and learn, but it's important to play smart. Here are some basic rules:</p>
       <ul>
-        <li><strong>אל תשתפו מידע אישי</strong> — לא שם מלא, כתובת, מספר טלפון או סיסמאות</li>
-        <li><strong>ספרו להורים</strong> — אם משהו מרגיש לא נכון, ספרו למבוגר</li>
-        <li><strong>קחו הפסקות</strong> — קום וזוז כל 30 דקות</li>
-        <li><strong>שחקו רק באתרים מוכרים</strong> — DIGGY בודק כל משחק לפני פרסום</li>
+        <li><strong>Don't share personal information</strong> — no full name, address, phone number, or passwords</li>
+        <li><strong>Tell your parents</strong> — if something feels off, tell an adult</li>
+        <li><strong>Take breaks</strong> — get up and move every 30 minutes</li>
+        <li><strong>Only play on trusted sites</strong> — DIGGY checks every game before publishing</li>
       </ul>
     `
   },
   'parents-guide': {
-    title: 'מדריך להורים — DIGGY Arena',
-    date: '8 יוני 2026',
+    title: 'A Guide for Parents — DIGGY Arena',
+    date: 'June 8, 2026',
     icon: 'fa-users',
-    excerpt: 'כל מה שהורים צריכים לדעת על הפלטפורמה שלנו.',
+    excerpt: 'Everything parents need to know about our platform.',
     content: `
-      <p>DIGGY Arena נועדה לספק סביבת משחקים בטוחה וחינוכית לילדים. כל משחק עובר בדיקת איכות ואישור מנהל לפני פרסום.</p>
-      <h3>מה אנחנו מבטיחים?</h3>
+      <p>DIGGY Arena is designed to provide a safe and educational gaming environment for kids. Every game goes through a quality check and admin approval before publishing.</p>
+      <h3>What do we guarantee?</h3>
       <ul>
-        <li>ללא פרסומות או קישורים חיצוניים בתוך המשחקים</li>
-        <li>ללא איסוף מידע אישי מילדים ללא הסכמת הורים</li>
-        <li>תוכן מותאם לגיל — ללא אלימות או תכנים פוגעניים</li>
-        <li>אפשרות לאימות דו-שלבי לחשבונות</li>
+        <li>No ads or external links inside the games</li>
+        <li>No collection of personal information from children without parental consent</li>
+        <li>Age-appropriate content — no violent or offensive material</li>
+        <li>Two-factor authentication available for accounts</li>
       </ul>
-      <p>לשאלות נוספות, פנו אלינו דרך <a href="#/contact" style="color: var(--accent-color);">דף צור קשר</a>.</p>
+      <p>For further questions, contact us through our <a href="#/contact" style="color: var(--accent-color);">contact page</a>.</p>
     `
   },
   'community': {
-    title: 'כללי קהילה DIGGY',
-    date: '5 יוני 2026',
+    title: 'DIGGY Community Guidelines',
+    date: 'June 5, 2026',
     icon: 'fa-handshake',
-    excerpt: 'כיצד לשמור על קהילה נעימה, מכבדת ומהנה.',
+    excerpt: 'How to keep a pleasant, respectful, and fun community.',
     content: `
-      <p>קהילת DIGGY בנויה על כבוד הדדי. אנו מצפים מכל המשתמשים:</p>
+      <p>The DIGGY community is built on mutual respect. We expect all users to:</p>
       <ul>
-        <li>לדרג משחקים בכנות ובהגינות</li>
-        <li>לא לנסות לפרוץ או לפגוע במערכת</li>
-        <li>לדווח על תוכן בעייתי דרך דף צור קשר</li>
-        <li>לכבד מפתחים ושחקנים אחרים</li>
+        <li>Rate games honestly and fairly</li>
+        <li>Not attempt to hack or harm the system</li>
+        <li>Report problematic content through the contact page</li>
+        <li>Respect other developers and players</li>
       </ul>
-      <p>הפרה של כללי הקהילה עלולה להוביל לחסימת חשבון.</p>
+      <p>Violating the community guidelines may lead to an account ban.</p>
     `
   },
   'top-games': {
-    title: 'המשחקים הפופולריים השבוע',
-    date: '1 יוני 2026',
+    title: 'This Week\'s Most Popular Games',
+    date: 'June 1, 2026',
     icon: 'fa-fire',
-    excerpt: 'אלו המשחקים שזכו לדירוג הגבוה ביותר השבוע.',
+    excerpt: 'These are the games that earned the highest ratings this week.',
     content: `
-      <p>כל שבוע אנו מפרסמים את המשחקים המובילים לפי דירוג שחקנים וכמות משחקים. הנה הנבחרים:</p>
+      <p>Every week we publish the top games ranked by player ratings and play count. Here are the picks:</p>
       <ul>
-        <li><strong>Neon Snake</strong> — קלאסיקת הארקייד עם עיצוב ניאון מרהיב ⭐ 4.8</li>
-        <li><strong>Space Laser Evader</strong> — משחק חלל מאתגר ⭐ 4.9</li>
-        <li><strong>Brick Breaker Glow</strong> — שובר לבנים עם אפקטים זוהרים ⭐ 4.6</li>
+        <li><strong>Neon Snake</strong> — an arcade classic with stunning neon design ⭐ 4.8</li>
+        <li><strong>Space Laser Evader</strong> — a challenging space game ⭐ 4.9</li>
+        <li><strong>Brick Breaker Glow</strong> — a brick breaker with glowing effects ⭐ 4.6</li>
       </ul>
-      <p>דרגו את המשחקים האהובים עליכם ועזרו לקהילה לגלות פנינים חדשות!</p>
+      <p>Rate your favorite games and help the community discover new gems!</p>
     `
   },
   'ratings-guide': {
-    title: 'איך עובדת מערכת הדירוג?',
-    date: '28 מאי 2026',
+    title: 'How Does the Rating System Work?',
+    date: 'May 28, 2026',
     icon: 'fa-star',
-    excerpt: 'הסבר על מערכת הכוכבים — דרגו משחקים ועזרו לקהילה.',
+    excerpt: 'An explanation of the star system — rate games and help the community.',
     content: `
-      <p>ב-DIGGY כל שחקן יכול לדרג משחק פעם אחת בלבד, בסולם של 1–5 כוכבים.</p>
-      <h3>איך לדרג?</h3>
+      <p>On DIGGY, every player can rate a game only once, on a scale of 1–5 stars.</p>
+      <h3>How to rate?</h3>
       <ul>
-        <li>היכנסו לדף המשחק</li>
-        <li>בצד ימין תראו "דרג את המשחק"</li>
-        <li>לחצו על מספר הכוכבים שמתאים לחוויה שלכם</li>
+        <li>Go to the game page</li>
+        <li>On the side you'll see "Rate this game"</li>
+        <li>Click the number of stars that matches your experience</li>
       </ul>
-      <p>הדירוג הממוצע מוצג על כרטיס המשחק ובדף הפרטים. מפתחים מקבלים בונוס תגמול על משחקים עם דירוג גבוה!</p>
+      <p>The average rating is shown on the game card and on the details page. Developers get a reward bonus for games with high ratings!</p>
     `
   },
   'new-features': {
-    title: 'חידושים ועדכונים — יוני 2026',
-    date: '20 יוני 2026',
+    title: 'New Features & Updates — June 2026',
+    date: 'June 20, 2026',
     icon: 'fa-sparkles',
-    excerpt: 'מערכת דירוג חדשה, מאמרים ציבוריים ושיפורי ניווט.',
+    excerpt: 'A new rating system, public articles, and navigation improvements.',
     content: `
-      <p>אנחנו שמחים לעדכן על חידושים חדשים בפלטפורמה:</p>
+      <p>We're happy to share new updates to the platform:</p>
       <ul>
-        <li><strong>מערכת דירוג כוכבים</strong> — דרגו כל משחק וראו את הדירוג הממוצע</li>
-        <li><strong>מאמרים וחדשות</strong> — תוכן חדש לשחקנים והורים</li>
-        <li><strong>מפת אתר משופרת</strong> — ניווט קל לכל הדפים</li>
-        <li><strong>דפי מידע משפטי</strong> — תנאי שימוש, פרטיות וצור קשר</li>
+        <li><strong>Star rating system</strong> — rate every game and see the average rating</li>
+        <li><strong>Articles & News</strong> — new content for players and parents</li>
+        <li><strong>Improved sitemap</strong> — easy navigation to all pages</li>
+        <li><strong>Legal info pages</strong> — terms of use, privacy, and contact</li>
       </ul>
     `
   }
@@ -3449,8 +3449,8 @@ async function renderArticles() {
   main.innerHTML = `
     <div class="top-header">
       <div class="page-title-wrap">
-        <h1>מאמרים וחדשות</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">טיפים, מדריכים ועדכונים מעולם DIGGY</p>
+        <h1>Articles & News</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">Tips, guides, and updates from the world of DIGGY</p>
       </div>
     </div>
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
@@ -3459,7 +3459,7 @@ async function renderArticles() {
           <div class="article-card-date"><i class="fas fa-calendar-alt"></i> ${art.date}</div>
           <h3 class="article-card-title"><i class="fas ${art.icon}" style="color: var(--accent-color); margin-left: 8px;"></i>${art.title}</h3>
           <p class="article-card-excerpt">${art.excerpt}</p>
-          <span style="color: var(--accent-color); font-size: 13px; margin-top: 10px; display: inline-block;">קרא עוד ←</span>
+          <span style="color: var(--accent-color); font-size: 13px; margin-top: 10px; display: inline-block;">Read More →</span>
         </div>
       `).join('')}
     </div>
@@ -3480,8 +3480,8 @@ async function renderArticleDetail(slug) {
   if (!article) {
     main.innerHTML = `
       <div style="text-align: center; padding: 80px 0;">
-        <h2>מאמר לא נמצא</h2>
-        <button class="btn btn-primary" onclick="window.location.hash='#/articles'" style="margin-top: 20px;">חזרה למאמרים</button>
+        <h2>Article not found</h2>
+        <button class="btn btn-primary" onclick="window.location.hash='#/articles'" style="margin-top: 20px;">Back to Articles</button>
       </div>
     `;
     return;
@@ -3489,7 +3489,7 @@ async function renderArticleDetail(slug) {
 
   main.innerHTML = `
     <div style="margin-bottom: 20px;">
-      <a href="#/articles" style="color: var(--accent-color); font-size: 14px;"><i class="fas fa-chevron-right"></i> חזרה לכל המאמרים</a>
+      <a href="#/articles" style="color: var(--accent-color); font-size: 14px;"><i class="fas fa-chevron-left"></i> Back to All Articles</a>
     </div>
     <div class="legal-page-content">
       <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;"><i class="fas fa-calendar-alt"></i> ${article.date}</div>
@@ -3510,35 +3510,35 @@ async function renderSitemap() {
   main.innerHTML = `
     <div class="top-header">
       <div class="page-title-wrap">
-        <h1>מפת האתר</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">כל הדפים והקישורים באתר DIGGY Arena</p>
+        <h1>Site Map</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">All the pages and links on the DIGGY Arena site</p>
       </div>
     </div>
     <div class="legal-page-content">
       <div class="sitemap-grid">
         <div class="sitemap-group">
-          <h3><i class="fas fa-home"></i> עמודים ראשיים</h3>
+          <h3><i class="fas fa-home"></i> Main Pages</h3>
           <ul>
-            <li><a href="#/">מסך הבית — קטלוג משחקים</a></li>
-            <li><a href="#/articles">מאמרים וחדשות</a></li>
-            <li><a href="#/login">הרשמה / כניסה</a></li>
-            <li><a href="#/settings">הגדרות פרופיל</a></li>
+            <li><a href="#/">Home — Game Catalog</a></li>
+            <li><a href="#/articles">Articles & News</a></li>
+            <li><a href="#/login">Sign Up / Log In</a></li>
+            <li><a href="#/settings">Profile Settings</a></li>
           </ul>
         </div>
         <div class="sitemap-group">
-          <h3><i class="fas fa-gamepad"></i> משחקים (${state.games.length})</h3>
-          <ul>${gameLinks || '<li>אין משחקים</li>'}</ul>
+          <h3><i class="fas fa-gamepad"></i> Games (${state.games.length})</h3>
+          <ul>${gameLinks || '<li>No games</li>'}</ul>
         </div>
         <div class="sitemap-group">
-          <h3><i class="fas fa-newspaper"></i> מאמרים</h3>
+          <h3><i class="fas fa-newspaper"></i> Articles</h3>
           <ul>${articleLinks}</ul>
         </div>
         <div class="sitemap-group">
-          <h3><i class="fas fa-gavel"></i> מידע משפטי</h3>
+          <h3><i class="fas fa-gavel"></i> Legal Info</h3>
           <ul>
-            <li><a href="#/terms">תנאי שימוש</a></li>
-            <li><a href="#/privacy">מדיניות פרטיות</a></li>
-            <li><a href="#/contact">צור קשר / זכויות יוצרים</a></li>
+            <li><a href="#/terms">Terms of Use</a></li>
+            <li><a href="#/privacy">Privacy Policy</a></li>
+            <li><a href="#/contact">Contact / Copyright</a></li>
           </ul>
         </div>
       </div>
@@ -3552,27 +3552,27 @@ async function renderTerms() {
   main.innerHTML = `
     <div class="top-header">
       <div class="page-title-wrap">
-        <h1>תנאי שימוש</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">עודכן לאחרונה: יוני 2026</p>
+        <h1>Terms of Use</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">Last updated: June 2026</p>
       </div>
     </div>
     <div class="legal-page-content">
       <div class="doc-section">
-        <h3>1. קבלת התנאים</h3>
-        <p>שימוש באתר DIGGY Arena מהווה הסכמה לתנאי שימוש אלה. אם אינך מסכים — אנא אל תשתמש באתר.</p>
+        <h3>1. Acceptance of Terms</h3>
+        <p>Using the DIGGY Arena site constitutes agreement to these terms of use. If you do not agree, please do not use the site.</p>
       </div>
       <div class="doc-section">
-        <h3>2. זכויות יוצרים</h3>
-        <p>כל התוכן באתר — עיצוב, לוגו, טקסטים וממשק — שייך ל-DIGGY Arena Ltd. אלא אם צוין אחרת. משחקים שפורסמו באתר שייכים למפתחיהם, והם מעניקים ל-DIGGY רישיון להציגם.</p>
-        <p>בעלי זכויות יוצרים שמזהים הפרה יכולים לפנות אלינו דרך <a href="#/contact" style="color: var(--accent-color);">דף צור קשר</a> עם פרטי ההפרה. נטפל בפניות תוך 48 שעות.</p>
+        <h3>2. Copyright</h3>
+        <p>All content on the site — design, logo, text, and interface — belongs to DIGGY Arena Ltd. unless otherwise stated. Games published on the site belong to their developers, who grant DIGGY a license to display them.</p>
+        <p>Copyright holders who identify an infringement can contact us via the <a href="#/contact" style="color: var(--accent-color);">contact page</a> with the infringement details. We will address reports within 48 hours.</p>
       </div>
       <div class="doc-section">
-        <h3>3. שימוש מותר</h3>
-        <p>האתר מיועד לשחק משחקים, לדרגם ולקרוא תוכן. אסור לפרוץ, להעתיק, לסרוק או לעשות שימוש מסחרי ללא אישור.</p>
+        <h3>3. Permitted Use</h3>
+        <p>The site is intended for playing games, rating them, and reading content. Hacking, copying, scraping, or commercial use without authorization is prohibited.</p>
       </div>
       <div class="doc-section">
-        <h3>4. הגבלת אחריות</h3>
-        <p>DIGGY Arena מספקת את השירות "כפי שהוא". איננו אחראים לנזקים הנובעים משימוש באתר או במשחקים של צד שלישי.</p>
+        <h3>4. Limitation of Liability</h3>
+        <p>DIGGY Arena provides the service "as is". We are not liable for damages arising from use of the site or third-party games.</p>
       </div>
     </div>
   `;
@@ -3584,26 +3584,26 @@ async function renderPrivacy() {
   main.innerHTML = `
     <div class="top-header">
       <div class="page-title-wrap">
-        <h1>מדיניות פרטיות</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">עודכן לאחרונה: יוני 2026</p>
+        <h1>Privacy Policy</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">Last updated: June 2026</p>
       </div>
     </div>
     <div class="legal-page-content">
       <div class="doc-section">
-        <h3>1. מידע שאנו אוספים</h3>
-        <p>אנו אוספים: שם משתמש, כתובת אימייל (בהרשמה), העדפות משחק (מועדפים, היסטוריה) ודירוגים. לא נאסוף מידע מילדים מתחת לגיל 13 ללא הסכמת הורים.</p>
+        <h3>1. Information We Collect</h3>
+        <p>We collect: username, email address (at signup), game preferences (favorites, history), and ratings. We do not collect information from children under 13 without parental consent.</p>
       </div>
       <div class="doc-section">
-        <h3>2. שימוש במידע</h3>
-        <p>המידע משמש להפעלת החשבון, שיפור חוויית המשחק, ותקשורת עם המשתמש. לא נמכור מידע לצד שלישי.</p>
+        <h3>2. Use of Information</h3>
+        <p>The information is used to operate the account, improve the gaming experience, and communicate with the user. We will not sell information to third parties.</p>
       </div>
       <div class="doc-section">
-        <h3>3. אחסון ואבטחה</h3>
-        <p>נתונים נשמרים ב-Firebase/Google Cloud עם הצפנה. דירוגים ומועדפים נשמרים גם ב-localStorage בדפדפן.</p>
+        <h3>3. Storage and Security</h3>
+        <p>Data is stored on Firebase/Google Cloud with encryption. Ratings and favorites are also stored in localStorage in the browser.</p>
       </div>
       <div class="doc-section">
-        <h3>4. זכויותיכם</h3>
-        <p>ניתן לבקש מחיקת חשבון ונתונים דרך <a href="#/contact" style="color: var(--accent-color);">דף צור קשר</a>.</p>
+        <h3>4. Your Rights</h3>
+        <p>You can request deletion of your account and data via the <a href="#/contact" style="color: var(--accent-color);">contact page</a>.</p>
       </div>
     </div>
   `;
@@ -3615,45 +3615,45 @@ async function renderContact() {
   main.innerHTML = `
     <div class="top-header">
       <div class="page-title-wrap">
-        <h1>צור קשר</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">נשמח לעזור — שחקנים, הורים ובעלי זכויות</p>
+        <h1>Contact Us</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">We're happy to help — players, parents, and copyright holders</p>
       </div>
     </div>
     <div class="legal-page-content">
       <div class="doc-section">
-        <h3><i class="fas fa-envelope" style="color: var(--accent-color);"></i> יצירת קשר כללית</h3>
-        <p>לשאלות, הצעות ותמיכה: <strong>${getSiteEmailSettings().supportEmail || 'diggy-games@outlook.com'}</strong></p>
+        <h3><i class="fas fa-envelope" style="color: var(--accent-color);"></i> General Contact</h3>
+        <p>For questions, suggestions, and support: <strong>${getSiteEmailSettings().supportEmail || 'diggy-games@outlook.com'}</strong></p>
       </div>
 
       <div class="doc-section" style="background: rgba(0,255,102,0.06); border: 1px solid rgba(0,255,102,0.16); border-radius: 12px; padding: 20px;">
-        <h3><i class="fas fa-headset" style="color: var(--accent-color);"></i> שלח פנייה לתמיכה</h3>
-        <p>הפנייה נרשמת בצ'אט פנימי של האדמין ונשלחת גם באימייל אם Resend מוגדר.</p>
+        <h3><i class="fas fa-headset" style="color: var(--accent-color);"></i> Send a Support Request</h3>
+        <p>Your request is logged in the admin's internal chat and is also sent by email if Resend is configured.</p>
         <form id="support-request-form" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
-          <input type="text" id="support-name" placeholder="שם מלא" required>
+          <input type="text" id="support-name" placeholder="Full name" required>
           <input type="email" id="support-email" placeholder="your@email.com" required>
-          <input type="text" id="support-subject" placeholder="נושא הפנייה" required>
-          <textarea id="support-message" rows="4" placeholder="תאר את הבעיה או השאלה שלך..." required></textarea>
-          <button type="submit" class="btn btn-primary" style="width: fit-content; justify-content: center;"><i class="fas fa-paper-plane"></i> שלח פנייה</button>
+          <input type="text" id="support-subject" placeholder="Request subject" required>
+          <textarea id="support-message" rows="4" placeholder="Describe your issue or question..." required></textarea>
+          <button type="submit" class="btn btn-primary" style="width: fit-content; justify-content: center;"><i class="fas fa-paper-plane"></i> Send Request</button>
         </form>
       </div>
 
       <div class="doc-section" style="background: rgba(255,200,0,0.05); border: 1px solid rgba(255,200,0,0.15); border-radius: 12px; padding: 20px;">
-        <h3><i class="fas fa-copyright" style="color: #ffd700;"></i> בעלי זכויות יוצרים (DMCA)</h3>
-        <p>אם אתם בעלי זכויות ומזהים תוכן המפר את זכויותיכם באתר שלנו, אנא שלחו אלינו:</p>
+        <h3><i class="fas fa-copyright" style="color: #ffd700;"></i> Copyright Holders (DMCA)</h3>
+        <p>If you are a copyright holder and identify content that infringes your rights on our site, please send us:</p>
         <ul>
-          <li>שם מלא ופרטי התקשרות</li>
-          <li>תיאור היצירה המוגנת</li>
-          <li>קישור לדף המשחק או התוכן הרלוונטי ב-DIGGY</li>
-          <li>הצהרה שהשימוש אינו מורשה</li>
+          <li>Full name and contact details</li>
+          <li>Description of the protected work</li>
+          <li>Link to the game page or relevant content on DIGGY</li>
+          <li>A statement that the use is unauthorized</li>
         </ul>
-        <p>שלחו ל: <strong>${getSiteEmailSettings().legalEmail || 'diggy-games@outlook.com'}</strong> — נטפל בפניה תוך 48 שעות עסקיות.</p>
+        <p>Send to: <strong>${getSiteEmailSettings().legalEmail || 'diggy-games@outlook.com'}</strong> — we will address the report within 48 business hours.</p>
       </div>
       <div class="doc-section">
-        <h3>קישורים מהירים</h3>
+        <h3>Quick Links</h3>
         <p>
-          <a href="#/sitemap" style="color: var(--accent-color); margin-left: 15px;">מפת האתר</a>
-          <a href="#/terms" style="color: var(--accent-color); margin-left: 15px;">תנאי שימוש</a>
-          <a href="#/privacy" style="color: var(--accent-color);">מדיניות פרטיות</a>
+          <a href="#/sitemap" style="color: var(--accent-color); margin-left: 15px;">Site Map</a>
+          <a href="#/terms" style="color: var(--accent-color); margin-left: 15px;">Terms of Use</a>
+          <a href="#/privacy" style="color: var(--accent-color);">Privacy Policy</a>
         </p>
       </div>
     </div>
@@ -3669,7 +3669,7 @@ async function renderContact() {
       const message = document.getElementById('support-message').value.trim();
 
       if (!name || !email || !subject || !message) {
-        showToast('אנא מלא את כל השדות.', 'warning');
+        showToast('Please fill in all fields.', 'warning');
         return;
       }
 
@@ -3679,26 +3679,26 @@ async function renderContact() {
         const adminEmail = getSiteEmailSettings().supportEmail || localStorage.getItem('diggy_support_admin_email') || 'diggy-games@outlook.com';
         const adminHtml = `
           <div style="font-family: sans-serif; background: #07080a; color: white; padding: 24px; border-radius: 12px; border: 1px solid #00ff66;">
-            <h2 style="color: #00ff66;">פנייה חדשה לתמיכה - DIGGY</h2>
-            <p><strong>שם:</strong> ${name}</p>
-            <p><strong>אימייל:</strong> ${email}</p>
-            <p><strong>נושא:</strong> ${subject}</p>
-            <p><strong>הודעה:</strong> ${message}</p>
+            <h2 style="color: #00ff66;">New Support Request - DIGGY</h2>
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Subject:</strong> ${subject}</p>
+            <p><strong>Message:</strong> ${message}</p>
           </div>
         `;
         const userHtml = `
           <div style="font-family: sans-serif; background: #07080a; color: white; padding: 24px; border-radius: 12px; border: 1px solid #00ff66;">
-            <h2 style="color: #00ff66;">קיבלנו את הפנייה שלך</h2>
-            <p>היי ${name},</p>
-            <p>הפנייה שלך נרשמה בצ'אט התמיכה של האדמין. נעדכן אותך בהקדם האפשרי.</p>
+            <h2 style="color: #00ff66;">We received your request</h2>
+            <p>Hi ${name},</p>
+            <p>Your request has been logged in the admin's support chat. We'll update you as soon as possible.</p>
           </div>
         `;
         await sendEmailViaResend(adminEmail, `DIGGY Support: ${subject}`, adminHtml);
-        await sendEmailViaResend(email, 'DIGGY - קיבלנו את הפנייה שלך', userHtml);
-        showToast('הפנייה נשלחה בהצלחה! אנחנו נענה בקרוב.', 'success');
+        await sendEmailViaResend(email, 'DIGGY - We received your request', userHtml);
+        showToast('Request sent successfully! We will respond soon.', 'success');
         form.reset();
       } catch (err) {
-        showToast(err.message || 'שגיאה בשליחת הפנייה', 'danger');
+        showToast(err.message || 'Error sending request', 'danger');
       } finally {
         showLoader(false);
       }
@@ -3714,9 +3714,9 @@ async function renderDevDocs() {
     main.innerHTML = `
       <div style="text-align: center; padding: 80px 0;">
         <i class="fas fa-lock" style="font-size: 64px; color: var(--danger-color); margin-bottom: 20px;"></i>
-        <h2>גישה חסומה!</h2>
-        <p style="color: var(--text-muted); margin-top: 10px;">דף זה מיועד למפתחים מורשים בלבד.</p>
-        <button class="btn btn-primary" onclick="window.location.hash='#/'" style="margin-top: 20px;">חזור למסך הבית</button>
+        <h2>Access Blocked!</h2>
+        <p style="color: var(--text-muted); margin-top: 10px;">This page is for authorized developers only.</p>
+        <button class="btn btn-primary" onclick="window.location.hash='#/'" style="margin-top: 20px;">Back to Home</button>
       </div>
     `;
     return;
@@ -3730,7 +3730,7 @@ async function renderDevDocs() {
       .doc-tab-btn {
         font-family: var(--font-display);
         font-size: 14px;
-        text-align: right;
+        text-align: left;
         background: none;
         border: none;
         padding: 12px 15px;
@@ -3817,18 +3817,18 @@ async function renderDevDocs() {
   main.innerHTML = `
     <div class="top-header">
       <div class="page-title-wrap">
-        <h1>מדריכים ותיעוד מפתחים</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">כל מה שצריך לדעת כדי לבנות ולהצליח עם משחקים ב-DIGGY</p>
+        <h1>Developer Guides & Documentation</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">Everything you need to know to build and succeed with games on DIGGY</p>
       </div>
     </div>
-    
+
     <div class="dev-docs-container" style="display: flex; gap: 30px; margin-top: 20px; align-items: flex-start;">
       <!-- Sidebar navigation for docs -->
       <div class="dev-docs-sidebar" style="width: 250px; background: var(--bg-card); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 15px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; box-shadow: var(--border-glow);">
-        <button class="doc-tab-btn active-doc-tab" data-doc="getting-started"><i class="fas fa-rocket"></i> כיצד זה עובד?</button>
-        <button class="doc-tab-btn" data-doc="standards"><i class="fas fa-list-check"></i> סטנדרטים ודרישות</button>
-        <button class="doc-tab-btn" data-doc="monetization"><i class="fas fa-coins"></i> תגמולים ורווחים</button>
-        <button class="doc-tab-btn" data-doc="tips"><i class="fas fa-trophy"></i> איך להצליח?</button>
+        <button class="doc-tab-btn active-doc-tab" data-doc="getting-started"><i class="fas fa-rocket"></i> How does it work?</button>
+        <button class="doc-tab-btn" data-doc="standards"><i class="fas fa-list-check"></i> Standards & Requirements</button>
+        <button class="doc-tab-btn" data-doc="monetization"><i class="fas fa-coins"></i> Rewards & Earnings</button>
+        <button class="doc-tab-btn" data-doc="tips"><i class="fas fa-trophy"></i> How to succeed?</button>
       </div>
       
       <!-- Doc Content Display area -->
@@ -3840,21 +3840,21 @@ async function renderDevDocs() {
 
   const docArticles = {
     'getting-started': `
-      <h2 class="doc-article-title"><i class="fas fa-rocket"></i> כיצד עובדת מערכת העלאת המשחקים ב-DIGGY?</h2>
+      <h2 class="doc-article-title"><i class="fas fa-rocket"></i> How does the DIGGY game upload system work?</h2>
       <div class="doc-section">
-        <p>פלטפורמת <strong>DIGGY</strong> מיועדת להביא משחקי רטרו, ארקייד וקז'ואל איכותיים ומרהיבים לילדים. המערכת מבוססת על הרצה פנימית של משחקי Web מבוססי HTML5/JS בתוך חלונות משחק (iframes) מאובטחים. מפתחים יכולים לבנות ולהגיש משחקים בקלות רבה.</p>
+        <p>The <strong>DIGGY</strong> platform is designed to bring high-quality, stunning retro, arcade, and casual games to kids. The system is based on running Web games built on HTML5/JS inside secure game windows (iframes). Developers can build and submit games very easily.</p>
       </div>
       <div class="doc-section">
-        <h3>השלבים להגשת משחק מוצלח באתר:</h3>
+        <h3>Steps to successfully submit a game on the site:</h3>
         <ul>
-          <li><strong>בניית המשחק (Development):</strong> צור משחק קז'ואל אינטראקטיבי שרץ בדפדפן (HTML/JS/CSS). ניתן להשתמש בכל מנוע שתומך בייצוא ל-Web (כמו Unity, Godot, PixiJS, Phaser או Vanilla JS Canvas).</li>
-          <li><strong>אירוח המשחק (Hosting):</strong> העלה את המשחק שלך לאוויר כדי שיהיה זמין בדפדפן. אנו ממליצים להשתמש ב-<strong>GitHub Pages</strong> שהוא שירות חינמי, יציב ומעולה לטעינת משחקים.</li>
-          <li><strong>הגשת הבקשה (Submission):</strong> היכנס ללוח המפתח שלך ב-DIGGY, לחץ על "הגש משחק חדש", והזן את קישור המשחק הפעיל (Playable URL) ואת קישור קוד המקור ב-GitHub.</li>
-          <li><strong>בדיקה ואישור (Admin Approval):</strong> מנהלי המערכת יבחנו את המשחק כדי לוודא תקינות. לאחר אישורו, המשחק יפורסם אוטומטית באתר ויופיע לכל השחקנים!</li>
+          <li><strong>Build the game (Development):</strong> Create an interactive casual game that runs in the browser (HTML/JS/CSS). You can use any engine that supports exporting to Web (like Unity, Godot, PixiJS, Phaser, or Vanilla JS Canvas).</li>
+          <li><strong>Host the game (Hosting):</strong> Put your game online so it's accessible in the browser. We recommend using <strong>GitHub Pages</strong>, a free, stable, and excellent service for loading games.</li>
+          <li><strong>Submit the request (Submission):</strong> Go to your developer panel on DIGGY, click "Submit New Game", and enter the playable game link (Playable URL) and the source code link on GitHub.</li>
+          <li><strong>Review and approval (Admin Approval):</strong> System admins will review the game to verify it works correctly. Once approved, the game will be automatically published on the site and appear to all players!</li>
         </ul>
       </div>
       <div class="doc-section">
-        <h3>דוגמה למבנה בסיסי של קובץ HTML ראשי למשחק:</h3>
+        <h3>Example of a basic main HTML file structure for a game:</h3>
         <div class="doc-code-block">&lt;!DOCTYPE html&gt;
 &lt;html&gt;
 &lt;head&gt;
@@ -3873,74 +3873,74 @@ async function renderDevDocs() {
       </div>
     `,
     'standards': `
-      <h2 class="doc-article-title"><i class="fas fa-list-check"></i> סטנדרטים ודרישות טכנולוגיות</h2>
+      <h2 class="doc-article-title"><i class="fas fa-list-check"></i> Technology Standards & Requirements</h2>
       <div class="doc-section">
-        <p>כדי לשמור על איכות גבוהה, רמת אבטחה מעולה וחווית משתמש רציפה עבור השחקנים שלנו, כל משחק המוגש לאתר DIGGY נדרש לעמוד בסטנדרטים הבאים:</p>
+        <p>To maintain high quality, excellent security, and a smooth user experience for our players, every game submitted to the DIGGY site must meet the following standards:</p>
       </div>
       <div class="doc-section">
-        <h3>1. עיצוב רספונסיבי והתאמה למסך</h3>
-        <p>מכיוון שהמשחקים נטענים בתוך מסגרת משחק קבועה בדף, על המשחק שלך להתאים את עצמו בצורה חלקה לכל גודל חלון (מומלץ להשתמש ב-100% רוחב וגובה של ה-viewport או לתמוך ביחס גובה-רוחב גמיש).</p>
+        <h3>1. Responsive Design & Screen Fit</h3>
+        <p>Since games load inside a fixed game frame on the page, your game must adapt smoothly to any window size (we recommend using 100% width and height of the viewport, or supporting a flexible aspect ratio).</p>
       </div>
       <div class="doc-section">
-        <h3>2. קוד מקור (לבדיקת Admin בלבד)</h3>
-        <p>מפתחים נדרשים לספק קישור לקוד המקור לצורך בדיקת איכות ואבטחה על ידי צוות הניהול. קישור זה <strong>אינו מוצג לציבור</strong> ומשמש אך ורק לתהליך האישור.</p>
+        <h3>2. Source Code (for Admin review only)</h3>
+        <p>Developers are required to provide a link to the source code for quality and security review by the admin team. This link <strong>is not shown publicly</strong> and is used exclusively for the approval process.</p>
       </div>
       <div class="doc-section">
-        <h3>3. שמירה על סביבה בטוחה לילדים</h3>
+        <h3>3. Maintaining a Safe Environment for Kids</h3>
         <ul>
-          <li><strong>ללא פרסומות:</strong> חל איסור מוחלט לשלב פרסומות קופצות, מודעות וידאו או קישורים חיצוניים לרכישה.</li>
-          <li><strong>ללא תוכן פוגעני:</strong> המשחקים צריכים להיות מותאמים לילדים בכל הגילאים, ללא תכנים אלימים או פוגעניים.</li>
-          <li><strong>ללא איסוף מידע אישי:</strong> אין לבקש מהמשתמשים להזין פרטים אישיים, סיסמאות או אימיילים בתוך המשחק.</li>
+          <li><strong>No ads:</strong> It is strictly forbidden to include pop-up ads, video ads, or external purchase links.</li>
+          <li><strong>No offensive content:</strong> Games must be suitable for children of all ages, with no violent or offensive content.</li>
+          <li><strong>No collecting personal information:</strong> Do not ask users to enter personal details, passwords, or emails within the game.</li>
         </ul>
       </div>
       <div class="doc-section">
-        <h3>4. שימוש במקלדת, עכבר ומגע</h3>
-        <p>ודא שהמשחק תומך במקשים סטנדרטיים (מקשי החצים, WASD, רווח) ועובד בצורה חלקה גם במכשירים ניידים אם ציינת שהמשחק מיועד גם להם.</p>
+        <h3>4. Keyboard, Mouse, and Touch Support</h3>
+        <p>Make sure your game supports standard keys (arrow keys, WASD, space) and works smoothly on mobile devices if you indicated the game is intended for them too.</p>
       </div>
     `,
     'monetization': `
-      <h2 class="doc-article-title"><i class="fas fa-coins"></i> מערכת תגמולים ורווחים למפתחים</h2>
+      <h2 class="doc-article-title"><i class="fas fa-coins"></i> Developer Rewards & Earnings System</h2>
       <div class="doc-section">
-        <p>ב-DIGGY אנו מעריכים את העבודה הקשה של המפתחים ומציעים מערכת תגמולים דינמית שמאפשרת לכם להרוויח על בסיס הפופולריות והאיכות של המשחקים שלכם!</p>
+        <p>At DIGGY we value the hard work of developers and offer a dynamic rewards system that lets you earn based on the popularity and quality of your games!</p>
       </div>
       <div class="doc-section">
-        <h3>איך עובד התגמול במערכת?</h3>
+        <h3>How does the rewards system work?</h3>
         <ul>
-          <li><strong>תגמול על כמות כניסות (Play Milestone Bonus):</strong>
-            <p>על כל שחקן רשום שמשחק במשחק שלך לפחות דקה אחת, המערכת מתגמלת אותך בנקודות מפתח (Developer Points) הניתנות להמרה לפרסים או למענקים כספיים.</p>
+          <li><strong>Play count reward (Play Milestone Bonus):</strong>
+            <p>For every registered player who plays your game for at least one minute, the system rewards you with Developer Points that can be converted into prizes or cash grants.</p>
           </li>
-          <li><strong>בונוס דירוג כוכבים (Star Rating multiplier):</strong>
-            <p>משחקים המדורגים בדירוג ממוצע גבוה על ידי הקהילה (למשל, 4.5 כוכבים ומעלה) זוכים להכפלת התגמול היומי שלהם ולחשיפה מוגברת בעמוד הבית.</p>
+          <li><strong>Star rating bonus (Star Rating multiplier):</strong>
+            <p>Games rated highly on average by the community (e.g., 4.5 stars and up) get their daily reward doubled and increased exposure on the home page.</p>
           </li>
-          <li><strong>אתגרי ותחרויות מפתחים (Monthly Hackathons):</strong>
-            <p>בכל חודש אנו מכריזים על תחרות פיתוח סביב נושא מסוים (למשל "משחקי חלל ניאון"). משחקים שמגיעים לשלושת המקומות הראשונים זוכים בפרסים כספיים יקרי ערך ובתגים מיוחדים לפרופיל המפתח שלהם.</p>
+          <li><strong>Developer challenges and competitions (Monthly Hackathons):</strong>
+            <p>Every month we announce a development competition around a specific theme (e.g. "Neon Space Games"). Games that reach the top three places win valuable cash prizes and special badges for their developer profile.</p>
           </li>
-          <li><strong>תגמול קוד פתוח מוביל (Open Source Contribution):</strong>
-            <p>קוד מקור שזוכה להכי הרבה כוכבים (Stars) ב-GitHub ומתוחזק היטב על ידי המפתח, מקבל מענק עידוד חודשי מטעם צוות DIGGY לפיתוח חינוכי.</p>
+          <li><strong>Leading open source reward (Open Source Contribution):</strong>
+            <p>Source code that earns the most Stars on GitHub and is well maintained by the developer receives a monthly encouragement grant from the DIGGY team for educational development.</p>
           </li>
         </ul>
       </div>
     `,
     'tips': `
-      <h2 class="doc-article-title"><i class="fas fa-trophy"></i> טיפים ועצות ליצירת משחק מנצח</h2>
+      <h2 class="doc-article-title"><i class="fas fa-trophy"></i> Tips & Advice for Creating a Winning Game</h2>
       <div class="doc-section">
-        <p>רוצה שהמשחק שלך יגיע לראש טבלת הפופולריות ושכולם ישחקו בו? הנה כמה טיפים מנצחים מצוות העיצוב והפיתוח של DIGGY:</p>
+        <p>Want your game to reach the top of the popularity chart and have everyone playing it? Here are some winning tips from the DIGGY design and development team:</p>
       </div>
       <div class="doc-section">
-        <h3>1. התאם לאסתטיקה של האתר - ניאון שחור וגלאסמורפיזם</h3>
-        <p>המשתמשים של DIGGY רגילים לעיצוב יוקרתי, זוהר ומודרני. משחקים המשתמשים ברקעים כהים בשילוב אלמנטים זוהרים בצבעי ניאון (ירוק זוהר, ורוד פוקסיה, כחול חשמלי) ירגישו מחוברים בצורה טבעית לאתר ויקבלו יותר כניסות.</p>
+        <h3>1. Match the Site's Aesthetic - Black Neon and Glassmorphism</h3>
+        <p>DIGGY's users are used to a premium, glowing, modern design. Games that use dark backgrounds combined with glowing neon-colored elements (glowing green, fuchsia pink, electric blue) will feel naturally connected to the site and get more plays.</p>
       </div>
       <div class="doc-section">
-        <h3>2. טעינה מהירה ומעבר מיידי למשחק (Instant Fun)</h3>
-        <p>לילדים יש סבלנות קצרה. הימנע ממסכי טעינה ארוכים, סרטוני פתיחה מורכבים או הגדרות מסובכות. הבא את השחקן ישירות למסך הראשי עם כפתור "שחק עכשיו" בולט.</p>
+        <h3>2. Fast Loading and Instant Transition to Gameplay (Instant Fun)</h3>
+        <p>Kids have short patience. Avoid long loading screens, complex intro videos, or complicated setup. Take the player directly to the main screen with a prominent "Play Now" button.</p>
       </div>
       <div class="doc-section">
-        <h3>3. שילוב מוזיקת רטרו (8-bit) ואפקטים קוליים</h3>
-        <p>סאונד יוצר 50% מהחוויה! מוזיקת רקע קופצנית בסגנון רטרו ואפקטים קוליים עבור קפיצה, פסילה, ולקיחת נקודות יהפכו את המשחק לממכר במיוחד. *טיפ: אל תשכח להוסיף כפתור השתקה (Mute).*</p>
+        <h3>3. Add Retro Music (8-bit) and Sound Effects</h3>
+        <p>Sound makes up 50% of the experience! Bouncy retro-style background music and sound effects for jumping, missing, and collecting points will make the game especially addictive. *Tip: don't forget to add a mute button.*</p>
       </div>
       <div class="doc-section">
-        <h3>4. מכניקה פשוטה אך מאתגרת (Easy to Learn, Hard to Master)</h3>
-        <p>המשחקים הטובים ביותר הם כאלה שניתן להבין בשתי שניות (למשל: סנייק או שובר לבנים) אך קשה מאוד להגיע בהם לניקוד גבוה. זה יוצר אתגר שמעודד את השחקנים לנסות שוב ושוב.</p>
+        <h3>4. Simple Yet Challenging Mechanics (Easy to Learn, Hard to Master)</h3>
+        <p>The best games are ones that can be understood in two seconds (e.g. Snake or Brick Breaker) but are very hard to get a high score in. This creates a challenge that encourages players to try again and again.</p>
       </div>
     `
   };

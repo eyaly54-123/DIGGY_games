@@ -145,16 +145,16 @@ export function validatePasswordStrength(password) {
   const errors = [];
   
   if (password.length < 6) {
-    errors.push('הסיסמה חייבת להכיל לפחות 6 תווים');
+    errors.push('Password must contain at least 6 characters');
   }
   if (password.length > 12) {
-    errors.push('הסיסמה חייבת להכיל לכל היותר 12 תווים');
+    errors.push('Password must contain at most 12 characters');
   }
   if (!/[a-zA-Z]/.test(password)) {
-    errors.push('הסיסמה חייבת להכיל לפחות אות אחת באנגלית');
+    errors.push('Password must contain at least one English letter');
   }
   if (!/[0-9]/.test(password)) {
-    errors.push('הסיסמה חייבת להכיל לפחות ספרה אחת');
+    errors.push('Password must contain at least one digit');
   }
   
   return {
@@ -168,13 +168,13 @@ export function validateUsername(username) {
   const errors = [];
   
   if (username.length < 6) {
-    errors.push('שם המשתמש חייב להכיל לפחות 6 תווים');
+    errors.push('Username must contain at least 6 characters');
   }
   if (username.length > 12) {
-    errors.push('שם המשתמש חייב להכיל לכל היותר 12 תווים');
+    errors.push('Username must contain at most 12 characters');
   }
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    errors.push('שם המשתמש יכול להכיל רק אותיות, ספרות וקו תחתון');
+    errors.push('Username can only contain letters, digits, and underscores');
   }
   
   return {
@@ -188,7 +188,7 @@ export function validateEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return {
     valid: emailRegex.test(email),
-    error: 'כתובת האימייל אינה תקינה'
+    error: 'Email address is invalid'
   };
 }
 
@@ -366,10 +366,10 @@ export async function signUpUser(username, password) {
     } catch (error) {
       console.warn("Firebase sign up failed. Falling back to LocalStorage auth.", error);
       if (error.code === 'auth/email-already-in-use' || error.message === 'Username is already taken.') {
-        throw new Error("שם המשתמש כבר תפוס במערכת!");
+        throw new Error("Username is already taken in the system!");
       }
       if (error.code === 'auth/weak-password') {
-        throw new Error("הסיסמה חלשה מדי!");
+        throw new Error("Password is too weak!");
       }
       fallbackMode = true;
       console.log("Switched to LocalStorage fallback due to error:", error.message || error);
@@ -422,7 +422,7 @@ export async function logInUser(username, password) {
         error.code === 'auth/invalid-credential' ||
         error.code === 'auth/invalid-email'
       ) {
-        throw new Error("שם המשתמש או הסיסמה שגויים!");
+        throw new Error("Incorrect username or password!");
       }
       fallbackMode = true; // Switch to local backup
       console.log("Switched to LocalStorage login fallback due to error:", error.message || error);
@@ -434,7 +434,7 @@ export async function logInUser(username, password) {
   const profile = localUsers.find(u => u.username.toLowerCase() === cleanUsername);
   
   if (!profile) {
-    throw new Error("שם המשתמש או הסיסמה שגויים! (לא נמצא חשבון)");
+    throw new Error("Incorrect username or password! (No account found)");
   }
 
   // Bypass password checking for biometric auth tokens
@@ -582,7 +582,7 @@ export async function submitDeveloperRequest(uid, username, reason, contactEmail
   // Save locally
   const requests = getLocalStorageData('developer_requests');
   const exists = requests.some(r => r.uid === uid && r.status === 'pending');
-  if (exists) throw new Error("יש לך כבר פנייה ממתינה להפוך למפתח!");
+  if (exists) throw new Error("You already have a pending request to become a developer!");
   
   requests.push(requestDoc);
   saveLocalStorageData('developer_requests', requests);
@@ -678,7 +678,7 @@ export async function submitGameRequest(gameData) {
   
   // Check rejected check
   const rejected = requests.some(r => r.githubUrl === gameData.githubUrl && r.status === 'rejected');
-  if (rejected) throw new Error("מאגר המשחק הזה נדחה בעבר ולא ניתן להגישו שוב.");
+  if (rejected) throw new Error("This game repository was previously rejected and cannot be resubmitted.");
 
   requests.push(requestDoc);
   saveLocalStorageData('game_requests', requests);
@@ -949,29 +949,29 @@ export function verify2FACode(uid, enteredCode) {
   const stored = twoFactorCodes.get(uid);
   
   if (!stored) {
-    return { valid: false, error: 'קוד אימות לא תקף או פג תוקף' };
+    return { valid: false, error: 'Verification code is invalid or expired' };
   }
-  
+
   if (Date.now() > stored.expiresAt) {
     twoFactorCodes.delete(uid);
-    return { valid: false, error: 'קוד האימות פג תוקף. בקש קוד חדש.' };
+    return { valid: false, error: 'The verification code has expired. Request a new code.' };
   }
-  
+
   if (stored.attempts >= stored.maxAttempts) {
     twoFactorCodes.delete(uid);
-    return { valid: false, error: 'חרגת ממספר הניסיונות המקסימלי. נסה להתחבר מחדש.' };
+    return { valid: false, error: 'Exceeded the maximum number of attempts. Try logging in again.' };
   }
-  
+
   stored.attempts++;
-  
+
   if (enteredCode === stored.code) {
     twoFactorCodes.delete(uid);
     return { valid: true };
   } else {
     const remaining = stored.maxAttempts - stored.attempts;
-    return { 
-      valid: false, 
-      error: `קוד שגוי. נותרו ${remaining} ניסיונות.` 
+    return {
+      valid: false,
+      error: `Incorrect code. ${remaining} attempts remaining.`
     };
   }
 }
@@ -988,13 +988,13 @@ const webAuthnCredentials = new Map();
 export async function registerWebAuthnCredential(username, uid) {
   // Check if WebAuthn is supported
   if (!window.PublicKeyCredential) {
-    throw new Error('הדפדפן שלך לא תומך ב-WebAuthn');
+    throw new Error('Your browser does not support WebAuthn');
   }
 
   // Check if user verifier is available (biometric device)
   const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
   if (!available) {
-    throw new Error('לא נמצא מכשיר ביומטרי זמין במערכת');
+    throw new Error('No biometric device available was found on the system');
   }
 
   try {
@@ -1029,7 +1029,7 @@ export async function registerWebAuthnCredential(username, uid) {
     });
 
     if (!credential) {
-      throw new Error('יצירת אישור ביומטרי נכשלה');
+      throw new Error('Creating biometric credential failed');
     }
 
     // Store the credential ID and public key
@@ -1051,14 +1051,14 @@ export async function registerWebAuthnCredential(username, uid) {
     return { success: true, credentialId: credentialId };
   } catch (error) {
     console.error('WebAuthn registration error:', error);
-    throw new Error(`שגיאה ברישום ביומטרי: ${error.message}`);
+    throw new Error(`Error registering biometrics: ${error.message}`);
   }
 }
 
 export async function verifyWebAuthnCredential(username, uid) {
   // Check if WebAuthn is supported
   if (!window.PublicKeyCredential) {
-    throw new Error('הדפדפן שלך לא תומך ב-WebAuthn');
+    throw new Error('Your browser does not support WebAuthn');
   }
 
   // Try to get stored credential
@@ -1074,7 +1074,7 @@ export async function verifyWebAuthnCredential(username, uid) {
   }
 
   if (!credentialData) {
-    throw new Error('לא נמצא אישור ביומטרי שמור. אנא הפעל זיהוי ביומטרי בהגדרות.');
+    throw new Error('No saved biometric credential found. Please enable biometric login in settings.');
   }
 
   try {
@@ -1096,7 +1096,7 @@ export async function verifyWebAuthnCredential(username, uid) {
     });
 
     if (!assertion) {
-      throw new Error('אימות ביומטרי נכשל');
+      throw new Error('Biometric verification failed');
     }
 
     // In a real implementation, you would verify the signature here
@@ -1109,7 +1109,7 @@ export async function verifyWebAuthnCredential(username, uid) {
     return { success: true, username: username };
   } catch (error) {
     console.error('WebAuthn verification error:', error);
-    throw new Error(`שגיאה באימות ביומטרי: ${error.message}`);
+    throw new Error(`Error verifying biometrics: ${error.message}`);
   }
 }
 
@@ -1243,9 +1243,9 @@ async function sendStatusEmail(to, name, type, status, reason) {
     improvement: '#ffcc00'
   };
   const statusTexts = {
-    approved: 'APPROVED / מאושר',
-    rejected: 'REJECTED / נדחה',
-    improvement: 'IMPROVEMENTS REQUESTED / דרוש שיפור'
+    approved: 'APPROVED',
+    rejected: 'REJECTED',
+    improvement: 'NEEDS IMPROVEMENT'
   };
 
   const color = statusColors[status] || '#00ff66';
@@ -1258,20 +1258,20 @@ async function sendStatusEmail(to, name, type, status, reason) {
       </div>
       
       <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 25px; border-left: 4px solid ${color}; margin-bottom: 25px;">
-        <h2>היי ${name},</h2>
-        <p>יש לנו עדכון לגבי הבקשה שלך באתר <strong>DIGGY</strong>!</p>
-        
+        <h2>Hi ${name},</h2>
+        <p>We have an update regarding your request on <strong>DIGGY</strong>!</p>
+
         <div style="margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 6px; text-align: center;">
-          <span style="color: #888888; display: block; margin-bottom: 5px;">סוג הפעולה</span>
+          <span style="color: #888888; display: block; margin-bottom: 5px;">Action Type</span>
           <strong style="font-size: 18px;">${type}</strong>
           <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 10px 0;">
-          <span style="color: #888888; display: block; margin-bottom: 5px;">סטטוס בקשה</span>
+          <span style="color: #888888; display: block; margin-bottom: 5px;">Request Status</span>
           <strong style="font-size: 22px; color: ${color};">${statusText}</strong>
         </div>
 
         ${reason ? `
           <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 6px;">
-            <strong style="color: ${color}; display: block; margin-bottom: 8px;">הערות מנהל המערכת:</strong>
+            <strong style="color: ${color}; display: block; margin-bottom: 8px;">System Admin Notes:</strong>
             <p style="margin: 0; color: #eeeeee;">${reason}</p>
           </div>
         ` : ''}
@@ -1279,7 +1279,7 @@ async function sendStatusEmail(to, name, type, status, reason) {
     </div>
   `;
 
-  await sendEmailViaResend(to, `DIGGY - עדכון בקשת ${type}`, html);
+  await sendEmailViaResend(to, `DIGGY - Update on your ${type} request`, html);
 }
 
 export async function recordGamePlay(gameId) {
