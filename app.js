@@ -1190,7 +1190,7 @@ function trigger2FAFlow(profile) {
   `;
   
   import('./firebase-service.js').then(async (mod) => {
-    const destEmail = profile.twoFactorEmail || profile.email;
+    const destEmail = profile.twoFactorEmail || profile.email || 'diggy-games@outlook.com';
     await mod.sendEmailViaResend(destEmail, "DIGGY - קוד אימות דו-שלבי", emailHtml);
     
     // Show 2FA input modal

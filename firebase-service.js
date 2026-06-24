@@ -1167,10 +1167,16 @@ export function getResendConfigState() {
   return getEmailJSSettings();
 }
 
+function getSafeRecipientEmail(to) {
+  const trimmed = String(to || '').trim();
+  return trimmed || 'diggy-games@outlook.com';
+}
+
 export async function sendEmailViaResend(to, subject, htmlContent) {
+  const recipientEmail = getSafeRecipientEmail(to);
   const emailLog = {
     id: 'email_' + Math.random().toString(36).substr(2, 9),
-    to,
+    to: recipientEmail,
     subject,
     html: htmlContent,
     sentAt: new Date().toLocaleTimeString(),
@@ -1189,11 +1195,11 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
         emailJSSettings.serviceId,
         emailJSSettings.templateId,
         {
-          to_email: to,
+          to_email: recipientEmail,
           subject,
           message: htmlContent,
           message_html: htmlContent,
-          reply_to: to,
+          reply_to: recipientEmail,
           from_name: emailJSSettings.fromName
         },
         emailJSSettings.publicKey
@@ -1202,7 +1208,7 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
       if (response?.status === 200) {
         emailLog.status = 'sent';
         emailLog.messageId = response?.text || response?.id;
-        console.log(`[Email Sent via EmailJS] to: ${to} | subject: ${subject} | id: ${response?.text || response?.id}`);
+        console.log(`[Email Sent via EmailJS] to: ${recipientEmail} | subject: ${subject} | id: ${response?.text || response?.id}`);
       } else {
         throw new Error('EmailJS failed to send the message.');
       }
@@ -1216,7 +1222,7 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
     }
   } else {
     emailLog.status = 'simulated';
-    console.log(`[Email Simulated] to: ${to} | subject: ${subject}`);
+    console.log(`[Email Simulated] to: ${recipientEmail} | subject: ${subject}`);
   }
 
   simulatedEmails.unshift(emailLog);
