@@ -816,6 +816,7 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
             }
           } else {
             const newGameId = 'game_' + Math.random().toString(36).substr(2, 9);
+            console.log(`[Firebase] Adding new approved game: ${newGameId} - ${requestData.name}`);
             await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "games"), {
               id: newGameId,
               name: requestData.name,
@@ -835,15 +836,21 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
               rating: 5.0,
               createdAt: new Date().toISOString()
             });
+            console.log(`[Firebase] Game added successfully: ${newGameId}`);
             updatePayload.gameId = newGameId;
           }
         }
         
         await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "game_requests", docId), updatePayload);
+        console.log(`[Firebase] Game request updated in Firebase: ${requestId}`);
       }
     } catch (e) {
-      console.warn("Firebase game request handling error, completed locally:", e);
+      console.error("Firebase game request handling error:", e);
+      console.error("Game was saved locally but NOT synced to Firebase. Other users won't see it.");
+      console.error("Please check Firebase connection status.");
     }
+  } else {
+    console.warn("Firebase not connected - game saved locally only. Other users won't see it.");
   }
 
   if (requestData) {
