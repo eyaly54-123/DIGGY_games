@@ -1257,6 +1257,14 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
 
   if (emailJSSettings.enabled && typeof window !== 'undefined' && window.emailjs) {
     try {
+      console.log('[EmailJS] Attempting to send email with config:', {
+        serviceId: emailJSSettings.serviceId,
+        templateId: emailJSSettings.templateId,
+        publicKey: emailJSSettings.publicKey ? emailJSSettings.publicKey.substring(0, 8) + '...' : 'missing',
+        to: recipientEmail
+      });
+      
+      // Initialize EmailJS with public key
       if (emailJSSettings.publicKey && typeof window.emailjs.init === 'function') {
         window.emailjs.init({ publicKey: emailJSSettings.publicKey });
       }
@@ -1283,15 +1291,22 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
         }
       );
 
+      console.log('[EmailJS] Response:', response);
+
       if (response?.status === 200) {
         emailLog.status = 'sent';
         emailLog.messageId = response?.text || response?.id;
         console.log(`[Email Sent via EmailJS] to: ${recipientEmail} | subject: ${subject} | id: ${response?.text || response?.id}`);
       } else {
-        throw new Error('EmailJS failed to send the message.');
+        throw new Error(`EmailJS failed with status: ${response?.status}, text: ${response?.text}`);
       }
     } catch (error) {
       console.error('[EmailJS Error]', error);
+      console.error('[EmailJS Error Details]', {
+        message: error.message,
+        status: error.status,
+        text: error.text
+      });
       emailLog.status = 'failed';
       emailLog.error = error.message;
       simulatedEmails.unshift(emailLog);
@@ -1300,7 +1315,7 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
     }
   } else {
     emailLog.status = 'simulated';
-    console.log(`[Email Simulated] to: ${recipientEmail} | subject: ${subject}`);
+    console.log(`[Email Simulated] to: ${recipientEmail} | subject: ${subject} | EmailJS enabled: ${emailJSSettings.enabled} | EmailJS loaded: ${typeof window !== 'undefined' && window.emailjs}`);
   }
 
   simulatedEmails.unshift(emailLog);
