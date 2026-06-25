@@ -1236,172 +1236,35 @@ export function removeWebAuthnCredential(uid) {
   localStorage.removeItem(`diggy_webauthn_${uid}`);
 }
 
-// --- EMAIL DISPATCHER ---
+// --- EMAIL DISPATCHER (Firebase-based) ---
 
 export const simulatedEmails = [];
 
-function getEmailJSSettings() {
-  const globalScope = typeof window !== 'undefined' ? window : null;
-  const serviceId = (localStorage.getItem('diggy_emailjs_service_id') || globalScope?.__DIGGY_EMAILJS_SERVICE_ID__ || 'service_i8bvc3q').trim();
-  const templateId = (localStorage.getItem('diggy_emailjs_template_id') || globalScope?.__DIGGY_EMAILJS_TEMPLATE_ID__ || 'template_m0ljxqg').trim();
-  const publicKey = (localStorage.getItem('diggy_emailjs_public_key') || globalScope?.__DIGGY_EMAILJS_PUBLIC_KEY__ || 'dzZsE1BZxybKa-hbH').trim();
-  const fromName = (localStorage.getItem('diggy_emailjs_from_name') || globalScope?.__DIGGY_EMAILJS_FROM_NAME__ || 'DIGGY Games').trim();
-  const fromEmail = (localStorage.getItem('diggy_emailjs_from_email') || globalScope?.__DIGGY_EMAILJS_FROM_EMAIL__ || 'diggy-games@outlook.com').trim();
-
-  return {
-    serviceId,
-    templateId,
-    publicKey,
-    fromName: fromName || 'DIGGY Games',
-    fromEmail: fromEmail || 'diggy-games@outlook.com',
-    enabled: Boolean(serviceId && templateId && publicKey)
-  };
-}
-
-export function setEmailJSConfig(serviceId, templateId, publicKey, fromName, fromEmail) {
-  const normalizedServiceId = (serviceId || '').trim();
-  const normalizedTemplateId = (templateId || '').trim();
-  const normalizedPublicKey = (publicKey || '').trim();
-  const normalizedFromName = (fromName || '').trim();
-  const normalizedFromEmail = (fromEmail || '').trim();
-
-  localStorage.setItem('diggy_emailjs_service_id', normalizedServiceId);
-  localStorage.setItem('diggy_emailjs_template_id', normalizedTemplateId);
-  localStorage.setItem('diggy_emailjs_public_key', normalizedPublicKey);
-  localStorage.setItem('diggy_emailjs_from_name', normalizedFromName || 'DIGGY Games');
-  localStorage.setItem('diggy_emailjs_from_email', normalizedFromEmail || 'noreply@diggy-games.com');
-  
-  // Sync to Firebase
-  if (firebaseLoaded && !fallbackMode) {
-    try {
-      const configRef = firebaseFirestore.doc(db, "site_config", "emailjs_config");
-      firebaseFirestore.setDoc(configRef, {
-        serviceId: normalizedServiceId,
-        templateId: normalizedTemplateId,
-        publicKey: normalizedPublicKey,
-        fromName: normalizedFromName || 'DIGGY Games',
-        fromEmail: normalizedFromEmail || 'noreply@diggy-games.com',
-        updatedAt: new Date().toISOString()
-      }).catch(e => {
-        console.warn("Firebase EmailJS config sync failed:", e);
-      });
-    } catch (e) {
-      console.warn("Firebase EmailJS config sync failed:", e);
-    }
-  }
-  
-  return getEmailJSSettings();
-}
-
-export function setResendConfig(serviceId, templateId, publicKey, fromName, fromEmail) {
-  return setEmailJSConfig(serviceId, templateId, publicKey, fromName, fromEmail);
-}
-
-export function getEmailJSConfigState() {
-  return getEmailJSSettings();
-}
-
-export function getResendConfigState() {
-  return getEmailJSSettings();
-}
-
-function getSafeRecipientEmail(to) {
-  const trimmed = String(to || '').trim();
-  return trimmed || 'diggy-games@outlook.com';
-}
-
 export async function sendEmailViaResend(to, subject, htmlContent) {
-  const recipientEmail = getSafeRecipientEmail(to);
+  const recipientEmail = String(to || 'diggy-games@outlook.com').trim();
   const emailLog = {
     id: 'email_' + Math.random().toString(36).substr(2, 9),
     to: recipientEmail,
     subject,
     html: htmlContent,
     sentAt: new Date().toLocaleTimeString(),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    status: 'simulated'
   };
   
-  const emailJSSettings = getEmailJSSettings();
-
-  if (emailJSSettings.enabled && typeof window !== 'undefined' && window.emailjs) {
+  // Store email log in Firebase for tracking
+  if (firebaseLoaded && !fallbackMode) {
     try {
-      console.log('[EmailJS] Attempting to send email with config:', {
-        serviceId: emailJSSettings.serviceId,
-        templateId: emailJSSettings.templateId,
-        publicKey: emailJSSettings.publicKey ? emailJSSettings.publicKey.substring(0, 8) + '...' : 'missing',
-        to: recipientEmail
-      });
-      
-      // Initialize EmailJS with public key
-      if (emailJSSettings.publicKey && typeof window.emailjs.init === 'function') {
-        window.emailjs.init({ publicKey: emailJSSettings.publicKey });
-      }
-
-      const response = await window.emailjs.send(
-        emailJSSettings.serviceId,
-        emailJSSettings.templateId,
-        {
-          to: recipientEmail,
-          to_email: recipientEmail,
-          email: recipientEmail,
-          recipient: recipientEmail,
-          subject,
-          message: htmlContent,
-          message_html: htmlContent,
-          reply_to: recipientEmail,
-          replyTo: recipientEmail,
-          from_name: emailJSSettings.fromName,
-          from_email: emailJSSettings.fromEmail,
-          fromEmail: emailJSSettings.fromEmail
-        },
-        {
-          publicKey: emailJSSettings.publicKey
-        }
-      );
-
-      console.log('[EmailJS] Response:', response);
-
-      if (response?.status === 200) {
-        emailLog.status = 'sent';
-        emailLog.messageId = response?.text || response?.id;
-        console.log(`[Email Sent via EmailJS] to: ${recipientEmail} | subject: ${subject} | id: ${response?.text || response?.id}`);
-      } else {
-        throw new Error(`EmailJS failed with status: ${response?.status}, text: ${response?.text}`);
-      }
-    } catch (error) {
-      console.error('[EmailJS Error]', error);
-      console.error('[EmailJS Error Details]', {
-        message: error.message,
-        status: error.status,
-        text: error.text
-      });
-      
-      // Provide helpful error messages
-      let errorMessage = error.message || 'Unknown error';
-      if (error.text && error.text.includes('Public Key is invalid')) {
-        errorMessage = 'Invalid EmailJS Public Key. Please check your EmailJS dashboard at https://dashboard.emailjs.com/admin/account and verify your public key is correct and your account is active.';
-      } else if (error.status === 400) {
-        errorMessage = `EmailJS configuration error (400): ${error.text || 'Bad Request'}. Please verify your Service ID, Template ID, and Public Key are correct.`;
-      } else if (error.status === 401) {
-        errorMessage = 'EmailJS authentication failed. Please check your Public Key.';
-      } else if (error.status === 403) {
-        errorMessage = 'EmailJS access forbidden. Your account may be suspended or you may have exceeded your quota.';
-      }
-      
-      emailLog.status = 'failed';
-      emailLog.error = errorMessage;
-      simulatedEmails.unshift(emailLog);
-      window.dispatchEvent(new CustomEvent('diggy-email-sent', { detail: emailLog }));
-      return { success: false, mode: 'emailjs_failed', error: errorMessage, email: emailLog };
+      await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "email_logs"), emailLog);
+    } catch (e) {
+      console.warn("Firebase email log save failed:", e);
     }
-  } else {
-    emailLog.status = 'simulated';
-    console.log(`[Email Simulated] to: ${recipientEmail} | subject: ${subject} | EmailJS enabled: ${emailJSSettings.enabled} | EmailJS loaded: ${typeof window !== 'undefined' && window.emailjs}`);
   }
-
+  
   simulatedEmails.unshift(emailLog);
   window.dispatchEvent(new CustomEvent('diggy-email-sent', { detail: emailLog }));
-  return { success: true, mode: emailJSSettings.enabled ? 'emailjs' : 'simulated', email: emailLog };
+  console.log(`[Email Simulated - Firebase Mode] to: ${recipientEmail} | subject: ${subject}`);
+  return { success: true, mode: 'firebase_simulated', email: emailLog };
 }
 
 async function sendStatusEmail(to, name, type, status, reason) {

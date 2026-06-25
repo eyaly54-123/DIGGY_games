@@ -41,8 +41,6 @@ import {
   validateUsername,
   validateEmail,
   sendEmailViaResend,
-  setResendConfig,
-  getResendConfigState,
   isPrivilegedRole,
   getPrivilegedAccountRequirements,
   getFirebaseStatus
@@ -1849,45 +1847,6 @@ async function renderAdmin() {
       <div class="support-chat-content" id="admin-support-thread-content"></div>
     </div>
 
-    <!-- EmailJS Configuration Section -->
-    <div class="section-title">EmailJS and Email Settings</div>
-    <div class="data-table-container" style="padding: 20px;">
-      <div class="form-group">
-        <label>Support Email</label>
-        <input type="email" id="site-support-email" value="${getSiteEmailSettings().supportEmail || 'diggy-games@outlook.com'}" placeholder="diggy-games@outlook.com">
-      </div>
-      <div class="form-group">
-        <label>Legal Email / DMCA</label>
-        <input type="email" id="site-legal-email" value="${getSiteEmailSettings().legalEmail || ''}" placeholder="legal@yourdomain.com">
-      </div>
-      <div class="form-group">
-        <label>Notification Email</label>
-        <input type="email" id="site-notification-email" value="${getSiteEmailSettings().notificationEmail || ''}" placeholder="alerts@yourdomain.com">
-      </div>
-      <div class="form-group">
-        <label>Service ID</label>
-        <input type="text" id="emailjs-service-id" value="${getResendConfigState().serviceId || ''}" placeholder="service_xxxxx">
-      </div>
-      <div class="form-group">
-        <label>Template ID</label>
-        <input type="text" id="emailjs-template-id" value="${getResendConfigState().templateId || ''}" placeholder="template_xxxxx">
-      </div>
-      <div class="form-group">
-        <label>Public Key</label>
-        <input type="password" id="emailjs-public-key" value="${getResendConfigState().publicKey || ''}" placeholder="public_key">
-      </div>
-      <div class="form-group">
-        <label>Sender Name</label>
-        <input type="text" id="emailjs-from-name" value="${getResendConfigState().fromName || 'DIGGY Games'}" placeholder="DIGGY Games">
-      </div>
-      <div class="form-group">
-        <label>Admin Support Address</label>
-        <input type="email" id="support-admin-email" value="${localStorage.getItem('diggy_support_admin_email') || 'diggy-games@outlook.com'}" placeholder="diggy-games@outlook.com">
-      </div>
-      <button class="btn btn-primary" id="save-resend-config-btn" style="margin-top: 10px;"><i class="fas fa-save"></i> Save EmailJS Settings</button>
-      <p style="margin-top: 10px; color: var(--text-muted); font-size: 13px;">In EmailJS you need to create a Service and a Template with fields: to_email, subject, message, message_html, reply_to, from_name.</p>
-    </div>
-
     <!-- Users Management Section -->
     <div class="section-title">User & Role Management (Registered Accounts)</div>
     <div class="data-table-container">
@@ -1924,44 +1883,6 @@ async function renderAdmin() {
   document.getElementById('admin-direct-upload-btn').addEventListener('click', () => {
     openAdminDirectUploadModal();
   });
-
-  const saveResendBtn = document.getElementById('save-resend-config-btn');
-  if (saveResendBtn) {
-    saveResendBtn.addEventListener('click', () => {
-      const serviceId = document.getElementById('emailjs-service-id').value;
-      const templateId = document.getElementById('emailjs-template-id').value;
-      const publicKey = document.getElementById('emailjs-public-key').value;
-      const fromName = document.getElementById('emailjs-from-name').value;
-      const adminEmail = document.getElementById('support-admin-email').value;
-      const supportEmail = document.getElementById('site-support-email').value;
-      const legalEmail = document.getElementById('site-legal-email').value;
-      const notificationEmail = document.getElementById('site-notification-email').value;
-      setResendConfig(serviceId, templateId, publicKey, fromName);
-      saveSiteEmailSettings({
-        supportEmail,
-        legalEmail,
-        notificationEmail
-      });
-      if (adminEmail) {
-        localStorage.setItem('diggy_support_admin_email', adminEmail);
-        
-        // Sync to Firebase
-        import('./firebase-service.js').then(mod => {
-          if (mod.firebaseLoaded && !mod.fallbackMode) {
-            try {
-              const configRef = mod.firebaseFirestore.doc(mod.db, "site_config", "admin_email");
-              mod.firebaseFirestore.setDoc(configRef, { adminEmail, updatedAt: new Date().toISOString() }).catch(e => {
-                console.warn("Firebase admin email sync failed:", e);
-              });
-            } catch (e) {
-              console.warn("Firebase admin email sync failed:", e);
-            }
-          }
-        });
-      }
-      showToast('EmailJS and email settings saved.', 'success');
-    });
-  }
 
   // Pull applications to become developers
   try {
@@ -3196,46 +3117,6 @@ export function renderSettings() {
           </div>
         </div>
       </div>
-
-      <!-- EmailJS Configuration (Admin only) -->
-      ${state.user.role === 'admin' ? `
-      <div class="settings-card" style="flex: 1; min-width: 320px; max-width: 100%;">
-        <div class="settings-card-header">
-          <h2 class="settings-card-title">Email Configuration (EmailJS)</h2>
-        </div>
-        <div class="modal-body">
-          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
-            Configure EmailJS to send real emails. Get your credentials from <a href="https://dashboard.emailjs.com/admin/account" target="_blank" style="color: var(--accent-color);">EmailJS Dashboard</a>
-          </p>
-          <div class="form-group">
-            <label>Service ID</label>
-            <input type="text" id="emailjs-service-id" placeholder="service_xxxxxx">
-          </div>
-          <div class="form-group">
-            <label>Template ID</label>
-            <input type="text" id="emailjs-template-id" placeholder="template_xxxxxx">
-          </div>
-          <div class="form-group">
-            <label>Public Key</label>
-            <input type="text" id="emailjs-public-key" placeholder="xxxxxxxxxxxxx">
-          </div>
-          <div class="form-group">
-            <label>From Name</label>
-            <input type="text" id="emailjs-from-name" placeholder="DIGGY Games">
-          </div>
-          <div class="form-group">
-            <label>From Email</label>
-            <input type="email" id="emailjs-from-email" placeholder="noreply@diggy-games.com">
-          </div>
-          <button class="btn btn-primary" id="save-emailjs-btn" style="width: 100%; justify-content: center; margin-top: 10px;">
-            <i class="fas fa-save"></i> Save Email Configuration
-          </button>
-          <button class="btn btn-secondary" id="test-emailjs-btn" style="width: 100%; justify-content: center; margin-top: 10px;">
-            <i class="fas fa-paper-plane"></i> Send Test Email
-          </button>
-        </div>
-      </div>
-      ` : ''}
     </div>
 
     <!-- Become a Developer Application Form (If player role) -->
@@ -3477,70 +3358,6 @@ export function renderSettings() {
       showLoader(false);
     }
   });
-
-  // EmailJS Configuration (Admin only)
-  if (state.user.role === 'admin') {
-    const currentConfig = getResendConfigState();
-    
-    // Pre-fill current values
-    document.getElementById('emailjs-service-id').value = currentConfig.serviceId || '';
-    document.getElementById('emailjs-template-id').value = currentConfig.templateId || '';
-    document.getElementById('emailjs-public-key').value = currentConfig.publicKey || '';
-    document.getElementById('emailjs-from-name').value = currentConfig.fromName || '';
-    document.getElementById('emailjs-from-email').value = currentConfig.fromEmail || '';
-
-    // Save EmailJS configuration
-    document.getElementById('save-emailjs-btn').addEventListener('click', async () => {
-      const serviceId = document.getElementById('emailjs-service-id').value.trim();
-      const templateId = document.getElementById('emailjs-template-id').value.trim();
-      const publicKey = document.getElementById('emailjs-public-key').value.trim();
-      const fromName = document.getElementById('emailjs-from-name').value.trim();
-      const fromEmail = document.getElementById('emailjs-from-email').value.trim();
-
-      if (!serviceId || !templateId || !publicKey) {
-        showToast('Service ID, Template ID, and Public Key are required', 'danger');
-        return;
-      }
-
-      showLoader(true);
-      try {
-        setResendConfig(serviceId, templateId, publicKey, fromName, fromEmail);
-        showToast('EmailJS configuration saved successfully!', 'success');
-      } catch (e) {
-        showToast('Failed to save configuration: ' + e.message, 'danger');
-      } finally {
-        showLoader(false);
-      }
-    });
-
-    // Test EmailJS configuration
-    document.getElementById('test-emailjs-btn').addEventListener('click', async () => {
-      const testEmail = state.user.email || state.user.supportEmail || 'test@example.com';
-      
-      showLoader(true);
-      try {
-        const html = `
-          <div style="font-family: sans-serif; background: #07080a; color: white; padding: 24px; border-radius: 12px; border: 2px solid #00ff66;">
-            <h1 style="color: #00ff66;">DIGGY Email Test</h1>
-            <p>This is a test email from DIGGY Games platform.</p>
-            <p>If you received this email, your EmailJS configuration is working correctly!</p>
-          </div>
-        `;
-        
-        const result = await sendEmailViaResend(testEmail, 'DIGGY - Email Configuration Test', html);
-        
-        if (result.success) {
-          showToast('Test email sent successfully! Check your inbox.', 'success');
-        } else {
-          showToast('Failed to send test email: ' + (result.error || 'Unknown error'), 'danger');
-        }
-      } catch (e) {
-        showToast('Error sending test email: ' + e.message, 'danger');
-      } finally {
-        showLoader(false);
-      }
-    });
-  }
 
   // Become Developer Application Form Submit
   const devAppForm = document.getElementById('dev-application-form');
