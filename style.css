@@ -250,6 +250,26 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   gap: 8px;
   flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.nav-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nav-menu::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.nav-menu::-webkit-scrollbar-thumb {
+  background: var(--accent-dim);
+  border-radius: 3px;
+}
+
+.nav-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-glow);
 }
 
 .nav-item {
