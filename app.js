@@ -49,7 +49,9 @@ import {
   firebaseLoaded,
   fallbackMode,
   firebaseFirestore,
-  db
+  db,
+  getLocalStorageData,
+  saveLocalStorageData
 } from './firebase-service.js';
 
 // --- PLATFORM STATE ---
@@ -2001,54 +2003,47 @@ async function renderDevStats() {
     const myGames = state.games.filter(g => g.developerUid === state.user.uid);
     const statsBody = document.getElementById('dev-stats-body');
 
-    // Calculate overall stats
+    // Calculate overall stats based on real data
     const totalPlays = myGames.reduce((sum, g) => sum + (g.plays || 0), 0);
     const totalRating = myGames.reduce((sum, g) => sum + (g.rating || 0), 0);
     const avgRating = myGames.length > 0 ? (totalRating / myGames.length).toFixed(1) : '0.0';
     const approvedGames = myGames.filter(g => g.approved).length;
-    const uniquePlayers = totalPlays * 0.85; // Simulated unique players
-    const avgPlaytime = '4.2m'; // Simulated average playtime
-    const returningPlayers = Math.floor(uniquePlayers * 0.3);
-    const conversionRate = '72%';
+    
+    // For unique players, we'll use total plays as a baseline since we don't have individual player tracking
+    const uniquePlayers = totalPlays > 0 ? totalPlays : 0;
+    
+    // Calculate average rating from actual game ratings
+    const gamesWithRatings = myGames.filter(g => g.rating && g.rating > 0);
+    const realAvgRating = gamesWithRatings.length > 0 
+      ? (gamesWithRatings.reduce((sum, g) => sum + g.rating, 0) / gamesWithRatings.length).toFixed(1)
+      : '0.0';
 
-    // Simulated playtime distribution
-    const playtimeDist = {
-      under1m: Math.floor(totalPlays * 0.15),
-      oneTo5: Math.floor(totalPlays * 0.35),
-      fiveTo15: Math.floor(totalPlays * 0.25),
-      fifteenTo30: Math.floor(totalPlays * 0.15),
-      thirtyTo60: Math.floor(totalPlays * 0.07),
-      over1h: Math.floor(totalPlays * 0.03)
-    };
+    // For returning players and conversion rate, we don't have tracking data yet
+    // Show "N/A" instead of fake data
+    const returningPlayers = 'N/A';
+    const conversionRate = 'N/A';
+    const avgPlaytime = 'N/A';
 
-    // Simulated device distribution
-    const deviceDist = {
-      desktop: '68%',
-      mobile: '29%',
-      tablet: '3%'
-    };
+    // Hide playtime and device distribution since we don't have real tracking data
+    document.getElementById('stat-time-under-1m').textContent = 'N/A';
+    document.getElementById('stat-time-1-5m').textContent = 'N/A';
+    document.getElementById('stat-time-5-15m').textContent = 'N/A';
+    document.getElementById('stat-time-15-30m').textContent = 'N/A';
+    document.getElementById('stat-time-30-60m').textContent = 'N/A';
+    document.getElementById('stat-time-over-1h').textContent = 'N/A';
+
+    document.getElementById('stat-device-desktop').textContent = 'N/A';
+    document.getElementById('stat-device-mobile').textContent = 'N/A';
+    document.getElementById('stat-device-tablet').textContent = 'N/A';
 
     document.getElementById('stat-total-plays').textContent = totalPlays;
     document.getElementById('stat-unique-players').textContent = uniquePlayers;
-    document.getElementById('stat-avg-rating').textContent = avgRating;
+    document.getElementById('stat-avg-rating').textContent = realAvgRating;
     document.getElementById('stat-total-games').textContent = myGames.length;
     document.getElementById('stat-approved-games').textContent = approvedGames;
     document.getElementById('stat-avg-playtime').textContent = avgPlaytime;
     document.getElementById('stat-returning-players').textContent = returningPlayers;
     document.getElementById('stat-conversion-rate').textContent = conversionRate;
-
-    // Playtime distribution
-    document.getElementById('stat-time-under-1m').textContent = playtimeDist.under1m;
-    document.getElementById('stat-time-1-5m').textContent = playtimeDist.oneTo5;
-    document.getElementById('stat-time-5-15m').textContent = playtimeDist.fiveTo15;
-    document.getElementById('stat-time-15-30m').textContent = playtimeDist.fifteenTo30;
-    document.getElementById('stat-time-30-60m').textContent = playtimeDist.thirtyTo60;
-    document.getElementById('stat-time-over-1h').textContent = playtimeDist.over1h;
-
-    // Device distribution
-    document.getElementById('stat-device-desktop').textContent = deviceDist.desktop;
-    document.getElementById('stat-device-mobile').textContent = deviceDist.mobile;
-    document.getElementById('stat-device-tablet').textContent = deviceDist.tablet;
 
     if (myGames.length === 0) {
       statsBody.innerHTML = `
@@ -2943,8 +2938,16 @@ async function renderAdmin() {
             try {
               // Update bug report status in Firebase
               if (firebaseLoaded && !fallbackMode) {
-                const bugRef = firebaseFirestore.doc(db, "bug_reports", reportId);
-                await firebaseFirestore.updateDoc(bugRef, { status: 'resolved', resolvedAt: new Date().toISOString() });
+                // Try to find the document by querying since the ID might be different
+                const q = firebaseFirestore.query(
+                  firebaseFirestore.collection(db, "bug_reports"),
+                  firebaseFirestore.where("id", "==", reportId)
+                );
+                const snap = await firebaseFirestore.getDocs(q);
+                if (!snap.empty) {
+                  const doc = snap.docs[0];
+                  await firebaseFirestore.updateDoc(doc.ref, { status: 'resolved', resolvedAt: new Date().toISOString() });
+                }
               }
               // Update local storage
               const reports = getLocalStorageData('bug_reports');

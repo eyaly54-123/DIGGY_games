@@ -1508,4 +1508,4 @@ export async function getBugReports() {
   return getLocalStorageData('bug_reports');
 }
 
-export { auth, firebaseLoaded, fallbackMode, firebaseFirestore, db };
+export { auth, firebaseLoaded, fallbackMode, firebaseFirestore, db, getLocalStorageData, saveLocalStorageData };
