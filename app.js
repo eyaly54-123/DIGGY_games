@@ -397,6 +397,7 @@ const routes = {
   '#/login': renderLogin,
   '#/dev': renderDev,
   '#/dev-docs': renderDevDocs,
+  '#/dev-stats': renderDevStats,
   '#/admin': renderAdmin,
   '#/settings': renderSettings,
   '#/articles': renderArticles,
@@ -470,11 +471,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (user) {
       state.user = user;
       applyTheme(user.customTheme || '#00ff66');
+      applyThemeMode(user.darkMode !== false);
+      applyBrightness(user.brightness || 100);
       renderUserBadge();
       setupSidebarNavigation(); // Rebuild sidebar when user changes
     } else {
       state.user = null;
       applyTheme('#00ff66');
+      applyThemeMode(true);
+      applyBrightness(100);
       renderUserBadge();
       setupSidebarNavigation(); // Rebuild sidebar when user logs out
     }
@@ -559,6 +564,10 @@ function setupSidebarNavigation() {
           <i class="fas fa-code"></i>
           <span>Developer Panel</span>
         </div>
+        <div class="nav-item" id="dev-stats-btn" data-route="#/dev-stats">
+          <i class="fas fa-chart-line"></i>
+          <span>Game Statistics</span>
+        </div>
         <div class="nav-item" id="dev-docs-btn" data-route="#/dev-docs">
           <i class="fas fa-book"></i>
           <span>Developer Guide</span>
@@ -627,6 +636,13 @@ function setupSidebarNavigation() {
   if (devNav) {
     devNav.addEventListener('click', () => {
       navigateTo('#/dev');
+    });
+  }
+
+  const devStatsNav = document.getElementById('dev-stats-btn');
+  if (devStatsNav) {
+    devStatsNav.addEventListener('click', () => {
+      navigateTo('#/dev-stats');
     });
   }
 
@@ -1474,6 +1490,134 @@ async function renderDev() {
   });
 }
 
+// Render: DEVELOPER STATISTICS
+async function renderDevStats() {
+  const main = document.getElementById('main-container');
+
+  if (!state.user || (state.user.role !== 'developer' && state.user.role !== 'admin')) {
+    main.innerHTML = `
+      <div style="text-align: center; padding: 80px 0;">
+        <i class="fas fa-lock" style="font-size: 64px; color: var(--danger-color); margin-bottom: 20px;"></i>
+        <h2>Access Blocked!</h2>
+        <p style="color: var(--text-muted); margin-top: 10px;">This page is for authorized developers only.</p>
+        <button class="btn btn-primary" onclick="window.location.hash='#/'" style="margin-top: 20px;">Back to Home</button>
+      </div>
+    `;
+    return;
+  }
+
+  main.innerHTML = `
+    <div class="top-header">
+      <div class="page-title-wrap">
+        <h1><i class="fas fa-chart-line"></i> Game Statistics</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">Detailed analytics for your games</p>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+      <div class="admin-stat-card">
+        <div class="admin-stat-number" id="stat-total-plays">-</div>
+        <div class="admin-stat-label">Total Plays</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-number" id="stat-avg-rating">-</div>
+        <div class="admin-stat-label">Average Rating</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-number" id="stat-total-games">-</div>
+        <div class="admin-stat-label">Total Games</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-number" id="stat-approved-games">-</div>
+        <div class="admin-stat-label">Approved Games</div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <div class="admin-card-title"><i class="fas fa-gamepad"></i> Game Performance</div>
+      </div>
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Game</th>
+              <th>Plays</th>
+              <th>Rating</th>
+              <th>Reviews</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="dev-stats-body">
+            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading statistics...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  try {
+    const myGames = state.games.filter(g => g.developerUid === state.user.uid);
+    const statsBody = document.getElementById('dev-stats-body');
+
+    // Calculate overall stats
+    const totalPlays = myGames.reduce((sum, g) => sum + (g.plays || 0), 0);
+    const totalRating = myGames.reduce((sum, g) => sum + (g.rating || 0), 0);
+    const avgRating = myGames.length > 0 ? (totalRating / myGames.length).toFixed(1) : '0.0';
+    const approvedGames = myGames.filter(g => g.approved).length;
+
+    document.getElementById('stat-total-plays').textContent = totalPlays;
+    document.getElementById('stat-avg-rating').textContent = avgRating;
+    document.getElementById('stat-total-games').textContent = myGames.length;
+    document.getElementById('stat-approved-games').textContent = approvedGames;
+
+    if (myGames.length === 0) {
+      statsBody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
+            <i class="fas fa-chart-bar" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+            No games found. Submit your first game to see statistics!
+          </td>
+        </tr>
+      `;
+    } else {
+      statsBody.innerHTML = myGames.map(game => {
+        const ratingInfo = getGameRatingInfo(game);
+        return `
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${game.logoUrl}" onerror="this.src='https://placehold.co/40x40/12161e/00ff66?text=G'" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
+                <strong>${game.name}</strong>
+              </div>
+            </td>
+            <td>${game.plays || 0}</td>
+            <td>${ratingInfo.display}</td>
+            <td>${game.ratingCount || 0}</td>
+            <td>${new Date(game.createdAt).toLocaleDateString()}</td>
+            <td>
+              <button class="btn btn-secondary view-details-btn" data-id="${game.id}" style="padding: 4px 8px; font-size: 11px;">
+                <i class="fas fa-eye"></i> View
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      statsBody.querySelectorAll('.view-details-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const gameId = btn.getAttribute('data-id');
+          navigateTo(`#/game/${gameId}`);
+        });
+      });
+    }
+  } catch (err) {
+    console.error("Error loading developer stats:", err);
+    showToast("Error loading statistics", "danger");
+  }
+}
+
 function openGameSubmitModal(editData = null) {
   const overlay = document.getElementById('modal-overlay');
   const modalTitle = document.getElementById('modal-title');
@@ -1678,12 +1822,37 @@ function openNewVersionModal(req) {
     <form id="game-version-form">
       <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 13px; color: var(--text-muted);">
         <i class="fas fa-info-circle" style="color: var(--accent-color); margin-left: 5px;"></i>
-        You are now submitting a version update for an active game. This request will be reviewed by the system Admin and updated on the site after approval.
+        You are now submitting a version update for an active game. You can edit all game details. This request will be reviewed by the system Admin and updated on the site after approval.
       </div>
 
       <div class="form-group">
-        <label>Game Name (cannot be changed)</label>
-        <input type="text" id="version-game-name" value="${req.name}" disabled style="background: rgba(255,255,255,0.02); color: var(--text-muted); cursor: not-allowed;">
+        <label>Game Name</label>
+        <input type="text" id="version-game-name" value="${req.name}" required>
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="version-description" required rows="3">${req.description || ''}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Logo URL</label>
+        <input type="url" id="version-logo" value="${req.logoUrl || ''}" required placeholder="https://example.com/logo.png">
+      </div>
+
+      <div class="form-group">
+        <label>How to Play</label>
+        <textarea id="version-how-to-play" required rows="2">${req.howToPlay || ''}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Target Audience</label>
+        <input type="text" id="version-audience" value="${req.targetAudience || ''}" required placeholder="e.g., Kids, Teens, All ages">
+      </div>
+
+      <div class="form-group">
+        <label>Categories (comma-separated)</label>
+        <input type="text" id="version-categories" value="${req.categories ? req.categories.join(', ') : ''}" required placeholder="ACTION, PUZZLE, RPG">
       </div>
 
       <div class="form-group">
@@ -1725,9 +1894,12 @@ function openNewVersionModal(req) {
       githubUrl: document.getElementById('version-github').value.trim(),
       developerUid: state.user.uid,
       developerName: state.user.username,
-      name: req.name,
-      logoUrl: req.logoUrl,
-      description: req.description
+      name: document.getElementById('version-game-name').value.trim(),
+      logoUrl: document.getElementById('version-logo').value.trim(),
+      description: document.getElementById('version-description').value.trim(),
+      howToPlay: document.getElementById('version-how-to-play').value.trim(),
+      targetAudience: document.getElementById('version-audience').value.trim(),
+      categories: document.getElementById('version-categories').value.split(',').map(c => c.trim()).filter(c => c)
     };
 
     showLoader(true);
@@ -2012,6 +2184,28 @@ async function renderAdmin() {
             </table>
           </div>
         </div>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <div class="admin-card-title"><i class="fas fa-trash-alt"></i> Approved Games Management</div>
+          </div>
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Game Name</th>
+                  <th>Developer</th>
+                  <th>Plays</th>
+                  <th>Rating</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-approved-games-body">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading approved games...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- Developer Requests Tab -->
@@ -2208,6 +2402,61 @@ async function renderAdmin() {
     }
   } catch (err) {
     console.error("Error loading games queue:", err);
+  }
+
+  // Pull approved games for management
+  try {
+    const approvedGames = state.games.filter(g => g.approved === true);
+    const approvedBody = document.getElementById('admin-approved-games-body');
+    
+    // Update stats
+    document.getElementById('stat-total-games').textContent = state.games.length;
+    document.getElementById('stat-pending-games').textContent = gameRequests ? gameRequests.filter(r => r.status === 'pending').length : 0;
+    document.getElementById('stat-approved-games').textContent = approvedGames.length;
+    
+    if (approvedGames.length === 0) {
+      approvedBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No approved games found.</td></tr>`;
+    } else {
+      approvedBody.innerHTML = approvedGames.map(game => {
+        const ratingInfo = getGameRatingInfo(game);
+        return `
+          <tr>
+            <td><strong>${game.name}</strong></td>
+            <td>${game.developerName}</td>
+            <td>${game.plays || 0}</td>
+            <td>${ratingInfo.display}</td>
+            <td>${new Date(game.createdAt).toLocaleDateString()}</td>
+            <td>
+              <button class="btn btn-danger admin-delete-game" data-id="${game.id}" style="padding: 4px 8px; font-size: 10px;">
+                <i class="fas fa-trash"></i> Delete
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Bind delete buttons
+      approvedBody.querySelectorAll('.admin-delete-game').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const gameId = btn.getAttribute('data-id');
+          if (confirm('Are you sure you want to delete this game? This action cannot be undone.')) {
+            showLoader(true);
+            try {
+              await removeGameByName(gameId);
+              showToast('Game deleted successfully!', 'success');
+              await fetchGames();
+              renderAdmin();
+            } catch (err) {
+              showToast('Failed to delete game: ' + err.message, 'danger');
+            } finally {
+              showLoader(false);
+            }
+          }
+        });
+      });
+    }
+  } catch (err) {
+    console.error("Error loading approved games:", err);
   }
 
   // Pull all registered users data
@@ -3684,13 +3933,37 @@ export function renderSettings() {
           <h2 class="settings-card-title">Display Customization</h2>
         </div>
         <div class="modal-body">
-          <label style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-display);">Choose your preferred neon color:</label>
-          <div class="color-picker-grid">
-            <div class="color-picker-btn ${state.theme === '#00ff66' ? 'active' : ''}" style="background: #00ff66;" data-color="#00ff66"></div>
-            <div class="color-picker-btn ${state.theme === '#ff3366' ? 'active' : ''}" style="background: #ff3366;" data-color="#ff3366"></div>
-            <div class="color-picker-btn ${state.theme === '#ffaa00' ? 'active' : ''}" style="background: #ffaa00;" data-color="#ffaa00"></div>
-            <div class="color-picker-btn ${state.theme === '#00ffff' ? 'active' : ''}" style="background: #00ffff;" data-color="#00ffff"></div>
-            <div class="color-picker-btn ${state.theme === '#b026ff' ? 'active' : ''}" style="background: #b026ff;" data-color="#b026ff"></div>
+          <div style="margin-bottom: 25px;">
+            <label style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-display);">Theme Mode</label>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+              <button class="btn ${state.darkMode !== false ? 'btn-primary' : 'btn-secondary'}" id="theme-dark-btn" style="flex: 1;">
+                <i class="fas fa-moon"></i> Dark
+              </button>
+              <button class="btn ${state.darkMode === false ? 'btn-primary' : 'btn-secondary'}" id="theme-light-btn" style="flex: 1;">
+                <i class="fas fa-sun"></i> Light
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 25px;">
+            <label style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-display);">Brightness</label>
+            <input type="range" id="brightness-slider" min="50" max="150" value="${state.brightness || 100}" style="width: 100%; margin-top: 10px; accent-color: var(--accent-color);">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 5px;">
+              <span>Darker</span>
+              <span id="brightness-value">${state.brightness || 100}%</span>
+              <span>Brighter</span>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-family: var(--font-display);">Choose your preferred neon color:</label>
+            <div class="color-picker-grid">
+              <div class="color-picker-btn ${state.theme === '#00ff66' ? 'active' : ''}" style="background: #00ff66;" data-color="#00ff66"></div>
+              <div class="color-picker-btn ${state.theme === '#ff3366' ? 'active' : ''}" style="background: #ff3366;" data-color="#ff3366"></div>
+              <div class="color-picker-btn ${state.theme === '#ffaa00' ? 'active' : ''}" style="background: #ffaa00;" data-color="#ffaa00"></div>
+              <div class="color-picker-btn ${state.theme === '#00ffff' ? 'active' : ''}" style="background: #00ffff;" data-color="#00ffff"></div>
+              <div class="color-picker-btn ${state.theme === '#b026ff' ? 'active' : ''}" style="background: #b026ff;" data-color="#b026ff"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -3855,6 +4128,38 @@ export function renderSettings() {
     });
   });
 
+  // Theme toggle bindings
+  document.getElementById('theme-dark-btn').addEventListener('click', async () => {
+    state.darkMode = true;
+    await updateUserProfile(state.user.uid, { darkMode: true });
+    applyThemeMode(true);
+    renderSettings();
+  });
+
+  document.getElementById('theme-light-btn').addEventListener('click', async () => {
+    state.darkMode = false;
+    await updateUserProfile(state.user.uid, { darkMode: false });
+    applyThemeMode(false);
+    renderSettings();
+  });
+
+  // Brightness slider binding
+  const brightnessSlider = document.getElementById('brightness-slider');
+  const brightnessValue = document.getElementById('brightness-value');
+  
+  brightnessSlider.addEventListener('input', (e) => {
+    const brightness = e.target.value;
+    brightnessValue.textContent = brightness + '%';
+    applyBrightness(brightness);
+  });
+
+  brightnessSlider.addEventListener('change', async (e) => {
+    const brightness = e.target.value;
+    state.brightness = brightness;
+    await updateUserProfile(state.user.uid, { brightness: brightness });
+    showToast("Brightness updated!", "success");
+  });
+
   // Biometric registration trigger
   document.getElementById('register-biometric-btn').addEventListener('click', async () => {
     showLoader(true);
@@ -3939,6 +4244,35 @@ function applyTheme(color) {
   root.style.setProperty('--accent-glow', `${color}66`); // 40% transparency hex
   root.style.setProperty('--accent-dim', `${color}1a`);  // 10% transparency hex
   root.style.setProperty('--border-color', `${color}26`); // 15% transparency hex
+}
+
+function applyThemeMode(isDark) {
+  const root = document.documentElement;
+  if (isDark) {
+    root.style.setProperty('--bg-primary', '#0a0a0f');
+    root.style.setProperty('--bg-secondary', '#12121a');
+    root.style.setProperty('--bg-darker', '#08080c');
+    root.style.setProperty('--text-primary', '#ffffff');
+    root.style.setProperty('--text-secondary', '#e0e0e0');
+    root.style.setProperty('--text-muted', '#a0a0a0');
+    root.style.setProperty('--text-dark', '#606060');
+    root.style.setProperty('--card-bg', '#15151f');
+  } else {
+    root.style.setProperty('--bg-primary', '#f5f5f7');
+    root.style.setProperty('--bg-secondary', '#ffffff');
+    root.style.setProperty('--bg-darker', '#e5e5e7');
+    root.style.setProperty('--text-primary', '#1a1a1a');
+    root.style.setProperty('--text-secondary', '#2a2a2a');
+    root.style.setProperty('--text-muted', '#6a6a6a');
+    root.style.setProperty('--text-dark', '#4a4a4a');
+    root.style.setProperty('--card-bg', '#ffffff');
+  }
+}
+
+function applyBrightness(brightness) {
+  const root = document.documentElement;
+  const brightnessValue = brightness / 100;
+  root.style.filter = `brightness(${brightnessValue})`;
 }
 
 // Render User Sidebar Avatar badge
