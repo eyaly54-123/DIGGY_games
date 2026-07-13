@@ -561,7 +561,8 @@ const routes = {
   '#/privacy': renderPrivacy,
   '#/contact': renderContact,
   '#/game/:id': renderGameDetails,
-  '#/become-developer': renderBecomeDeveloper
+  '#/become-developer': renderBecomeDeveloper,
+  '#/leaderboard': renderLeaderboard
 };
 
 function navigateTo(route) {
@@ -656,6 +657,10 @@ function setupSidebarNavigation() {
     <div class="nav-item" id="home-nav-btn" data-route="#/">
       <i class="fas fa-home"></i>
       <span>Home</span>
+    </div>
+    <div class="nav-item" id="leaderboard-nav-btn" data-route="#/leaderboard">
+      <i class="fas fa-trophy"></i>
+      <span>Leaderboard</span>
     </div>
     <div class="nav-item" id="articles-nav-btn" data-route="#/articles">
       <i class="fas fa-newspaper"></i>
@@ -776,6 +781,13 @@ function setupSidebarNavigation() {
   document.getElementById('home-nav-btn').addEventListener('click', () => {
     navigateTo('#/');
   });
+
+  const leaderboardNav = document.getElementById('leaderboard-nav-btn');
+  if (leaderboardNav) {
+    leaderboardNav.addEventListener('click', () => {
+      navigateTo('#/leaderboard');
+    });
+  }
 
   const articlesNav = document.getElementById('articles-nav-btn');
   if (articlesNav) {
@@ -5647,26 +5659,124 @@ async function renderTerms() {
     <div class="top-header">
       <div class="page-title-wrap">
         <h1>Terms of Use</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">Last updated: June 2026</p>
+        <p style="color: var(--text-muted); margin-top: 5px;">Last updated: July 2026 | Effective Date: July 13, 2026</p>
       </div>
     </div>
     <div class="legal-page-content">
       <div class="doc-section">
         <h3>1. Acceptance of Terms</h3>
-        <p>Using the DIGGY Arena site constitutes agreement to these terms of use. If you do not agree, please do not use the site.</p>
+        <p>By accessing, browsing, or using the DIGGY Arena platform (the "Service"), you acknowledge that you have read, understood, and agree to be bound by these Terms of Use ("Terms") and our Privacy Policy. If you do not agree to these Terms in their entirety, you must not access or use the Service.</p>
+        <p>These Terms constitute a legally binding agreement between you and DIGGY Arena Ltd. ("DIGGY Arena", "we", "us", or "our"). Your use of the Service is conditioned upon your compliance with these Terms.</p>
+        <p>We reserve the right to modify these Terms at any time, at our sole discretion. All changes will be effective immediately upon posting to the Service. Your continued use of the Service following the posting of revised Terms constitutes your acceptance of such changes. It is your responsibility to review these Terms periodically for any modifications.</p>
       </div>
+
       <div class="doc-section">
-        <h3>2. Copyright</h3>
-        <p>All content on the site — design, logo, text, and interface — belongs to DIGGY Arena Ltd. unless otherwise stated. Games published on the site belong to their developers, who grant DIGGY a license to display them.</p>
-        <p>Copyright holders who identify an infringement can contact us via the <a href="#/contact" style="color: var(--accent-color);">contact page</a> with the infringement details. We will address reports within 48 hours.</p>
+        <h3>2. Eligibility and Account Registration</h3>
+        <p><strong>2.1 Age Requirement:</strong> You must be at least 13 years of age to create an account and use the Service. By creating an account, you represent and warrant that you are at least 13 years old. If you are under 18 years of age, you must have the consent of your parent or legal guardian to use the Service.</p>
+        <p><strong>2.2 Account Security:</strong> You are responsible for maintaining the confidentiality of your account credentials, including your username and password. You agree to notify us immediately of any unauthorized use of your account or any other breach of security. You are solely responsible for all activities that occur under your account, whether or not you authorized such activities.</p>
+        <p><strong>2.3 Account Information:</strong> You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete. You agree not to impersonate any person or entity or misrepresent your affiliation with any person or entity.</p>
+        <p><strong>2.4 Account Termination:</strong> We reserve the right to suspend or terminate your account at any time, with or without cause, with or without notice, for any reason, including but not limited to violation of these Terms, fraudulent activity, or abuse of the Service.</p>
       </div>
+
       <div class="doc-section">
-        <h3>3. Permitted Use</h3>
-        <p>The site is intended for playing games, rating them, and reading content. Hacking, copying, scraping, or commercial use without authorization is prohibited.</p>
+        <h3>3. Intellectual Property Rights</h3>
+        <p><strong>3.1 DIGGY Arena Content:</strong> All content, features, and functionality of the Service, including but not limited to text, graphics, logos, software, designs, interface, and code, are owned by DIGGY Arena Ltd. or our licensors and are protected by copyright, trademark, and other intellectual property laws. All rights are reserved.</p>
+        <p><strong>3.2 User-Generated Content:</strong> Any content you submit, post, or display on the Service, including but not limited to game reviews, comments, ratings, and feedback ("User Content"), remains your property. However, by submitting User Content, you grant DIGGY Arena a worldwide, non-exclusive, royalty-free, perpetual, irrevocable, and fully sublicensable right to use, reproduce, modify, adapt, publish, translate, create derivative works from, distribute, and display such User Content in connection with the Service.</p>
+        <p><strong>3.3 Developer Game Content:</strong> Games published on the Service by developers remain the intellectual property of their respective developers. Developers grant DIGGY Arena a non-exclusive, worldwide, royalty-free license to host, display, and distribute their games on the Service. Developers represent and warrant that they have all necessary rights to grant such license.</p>
+        <p><strong>3.4 Copyright Infringement:</strong> DIGGY Arena respects the intellectual property rights of others. If you believe that your copyrighted work has been copied in a way that constitutes copyright infringement and is accessible on the Service, please notify us immediately via the <a href="#/contact" style="color: var(--accent-color);">contact page</a> with a detailed description of the alleged infringement. We will respond to all valid DMCA takedown notices within 48 hours of receipt.</p>
       </div>
+
       <div class="doc-section">
-        <h3>4. Limitation of Liability</h3>
-        <p>DIGGY Arena provides the service "as is". We are not liable for damages arising from use of the site or third-party games.</p>
+        <h3>4. Permitted and Prohibited Uses</h3>
+        <p><strong>4.1 Permitted Uses:</strong> You may use the Service for personal, non-commercial purposes, including playing games, rating games, reading content, and interacting with other users in accordance with these Terms.</p>
+        <p><strong>4.2 Prohibited Uses:</strong> You agree not to:</p>
+        <ul>
+          <li>Use the Service for any illegal or unauthorized purpose</li>
+          <li>Reverse engineer, decompile, disassemble, or attempt to derive the source code of any software or technology used in the Service</li>
+          <li>Access, scrape, or harvest data from the Service through automated means</li>
+          <li>Use the Service to distribute malware, viruses, or harmful code</li>
+          <li>Interfere with or disrupt the Service or servers connected to the Service</li>
+          <li>Use the Service to harass, abuse, or harm other users</li>
+          <li>Post or transmit content that is defamatory, obscene, offensive, or otherwise objectionable</li>
+          <li>Impersonate any person or entity or misrepresent your affiliation</li>
+          <li>Use the Service for commercial purposes without prior written consent</li>
+          <li>Attempt to gain unauthorized access to any part of the Service</li>
+        </ul>
+      </div>
+
+      <div class="doc-section">
+        <h3>5. Developer Responsibilities</h3>
+        <p><strong>5.1 Game Content:</strong> Developers are solely responsible for the content of their games, including ensuring that games do not contain malware, viruses, or harmful code. Developers represent and warrant that their games do not infringe upon the intellectual property rights of third parties.</p>
+        <p><strong>5.2 Game Quality:</strong> Developers must ensure that their games are functional, safe, and appropriate for the intended audience. DIGGY Arena reserves the right to remove any game that violates these Terms or is deemed inappropriate.</p>
+        <p><strong>5.3 Revenue Sharing:</strong> Any revenue sharing arrangements between DIGGY Arena and developers are governed by separate written agreements. These Terms do not create any obligation for DIGGY Arena to share revenue with developers.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>6. User Conduct and Community Guidelines</h3>
+        <p>You agree to use the Service in a manner that is respectful to other users. Prohibited conduct includes but is not limited to:</p>
+        <ul>
+          <li>Harassment, bullying, or threatening other users</li>
+          <li>Posting hate speech, discriminatory content, or content that promotes violence</li>
+          <li>Engaging in spam or unsolicited commercial communications</li>
+          <li>Sharing personal information of other users without consent</li>
+          <li>Manipulating ratings, reviews, or game statistics</li>
+          <li>Creating multiple accounts to circumvent restrictions</li>
+        </ul>
+        <p>We reserve the right to remove any content or user account that violates these community guidelines.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>7. Privacy and Data Protection</h3>
+        <p>Your use of the Service is also governed by our Privacy Policy, which describes how we collect, use, and protect your personal information. By using the Service, you consent to the collection and use of your information as described in our Privacy Policy.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>8. Disclaimer of Warranties</h3>
+        <p>THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT.</p>
+        <p>DIGGY Arena does not warrant that the Service will be uninterrupted, secure, or error-free. We do not warrant that the results of using the Service will meet your requirements or that any defects in the Service will be corrected.</p>
+        <p>Games available on the Service are provided by third-party developers. DIGGY Arena does not warrant the quality, safety, or functionality of any third-party games.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>9. Limitation of Liability</h3>
+        <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, DIGGY ARENA SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM YOUR ACCESS TO OR USE OF OR INABILITY TO ACCESS OR USE THE SERVICE.</p>
+        <p>IN NO EVENT SHALL DIGGY ARENA'S TOTAL LIABILITY TO YOU FOR ALL CLAIMS, DAMAGES, OR CAUSES OF ACTION EXCEED THE AMOUNT YOU PAID, IF ANY, FOR ACCESSING THE SERVICE DURING THE TWELVE (12) MONTHS PRECEDING THE CLAIM.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>10. Indemnification</h3>
+        <p>You agree to indemnify, defend, and hold harmless DIGGY Arena and its officers, directors, employees, agents, and affiliates from and against any and all claims, damages, obligations, losses, liabilities, costs, or debt, and expenses (including but not limited to attorney's fees) arising from:</p>
+        <ul>
+          <li>Your use of and access to the Service</li>
+          <li>Your violation of any term of these Terms</li>
+          <li>Your violation of any third-party right, including without limitation any copyright, property, or privacy right</li>
+          <li>Any claim that your User Content caused damage to a third party</li>
+        </ul>
+      </div>
+
+      <div class="doc-section">
+        <h3>11. Termination</h3>
+        <p>We may terminate or suspend your account and access to the Service at any time, with or without cause, with or without notice, effective immediately. Upon termination, your right to use the Service will immediately cease.</p>
+        <p>All provisions of these Terms which by their nature should survive termination shall survive, including but not limited to ownership provisions, warranty disclaimers, indemnity, and limitations of liability.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>12. Governing Law and Dispute Resolution</h3>
+        <p>These Terms shall be governed by and construed in accordance with the laws of the State of Israel, without regard to its conflict of law provisions.</p>
+        <p>Any dispute arising out of or relating to these Terms or the Service shall be resolved through binding arbitration in accordance with the rules of the Israel Arbitration Association. The arbitration shall be conducted in the English language and shall take place in Tel Aviv, Israel.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>13. General Provisions</h3>
+        <p><strong>13.1 Entire Agreement:</strong> These Terms constitute the entire agreement between you and DIGGY Arena regarding the Service and supersede all prior or contemporaneous communications, proposals, and agreements, whether oral or written.</p>
+        <p><strong>13.2 Severability:</strong> If any provision of these Terms is found to be unenforceable or invalid, that provision will be limited or eliminated to the minimum extent necessary so that the remaining Terms will remain in full force and effect.</p>
+        <p><strong>13.3 Waiver:</strong> Our failure to enforce any right or provision of these Terms will not be considered a waiver of such right or provision.</p>
+        <p><strong>13.4 Assignment:</strong> You may not assign or transfer these Terms or your rights under these Terms without our prior written consent. We may assign or transfer these Terms at any time without restriction.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>14. Contact Information</h3>
+        <p>If you have any questions about these Terms, please contact us via the <a href="#/contact" style="color: var(--accent-color);">contact page</a>.</p>
       </div>
     </div>
   `;
@@ -5679,25 +5789,110 @@ async function renderPrivacy() {
     <div class="top-header">
       <div class="page-title-wrap">
         <h1>Privacy Policy</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">Last updated: June 2026</p>
+        <p style="color: var(--text-muted); margin-top: 5px;">Last updated: July 2026 | Effective Date: July 13, 2026</p>
       </div>
     </div>
     <div class="legal-page-content">
       <div class="doc-section">
-        <h3>1. Information We Collect</h3>
-        <p>We collect: username, email address (at signup), game preferences (favorites, history), and ratings. We do not collect information from children under 13 without parental consent.</p>
+        <h3>1. Introduction</h3>
+        <p>DIGGY Arena Ltd. ("DIGGY Arena", "we", "us", or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our DIGGY Arena platform (the "Service"). Please read this Privacy Policy carefully. If you do not agree with the terms of this Privacy Policy, please do not access the Service.</p>
+        <p>We are committed to conducting our business in accordance with these principles in order to ensure that the confidentiality of personal information is protected and maintained.</p>
       </div>
+
       <div class="doc-section">
-        <h3>2. Use of Information</h3>
-        <p>The information is used to operate the account, improve the gaming experience, and communicate with the user. We will not sell information to third parties.</p>
+        <h3>2. Information We Collect</h3>
+        <p><strong>2.1 Information You Provide to Us:</strong> We collect information you provide directly to us when you create an account, including:</p>
+        <ul>
+          <li><strong>Account Information:</strong> Username, email address, password (encrypted), and profile information such as avatar/logo</li>
+          <li><strong>Developer Information:</strong> If you apply to become a developer, we may collect additional information such as GitHub profile, portfolio, and reason for application</li>
+          <li><strong>Support Requests:</strong> When you contact us for support, we collect your name, email address, and the content of your message</li>
+          <li><strong>Bug Reports:</strong> When you submit bug reports, we collect the description of the issue and any relevant screenshots or logs</li>
+        </ul>
+        <p><strong>2.2 Information Automatically Collected:</strong> When you access or use the Service, we automatically collect information about your device and usage, including:</p>
+        <ul>
+          <li><strong>Device Information:</strong> IP address, browser type, operating system, device identifiers, and mobile network information</li>
+          <li><strong>Usage Information:</strong> Pages visited, features used, time spent, games played, and interaction patterns</li>
+          <li><strong>Game Statistics:</strong> Number of plays, ratings, favorites, and game history</li>
+        </ul>
+        <p><strong>2.3 Cookies and Similar Technologies:</strong> We use cookies and similar tracking technologies to track activity on our Service and hold certain information. Cookies are files with a small amount of data which may include an anonymous unique identifier.</p>
       </div>
+
       <div class="doc-section">
-        <h3>3. Storage and Security</h3>
-        <p>Data is stored on Firebase/Google Cloud with encryption. Ratings and favorites are also stored in localStorage in the browser.</p>
+        <h3>3. How We Use Your Information</h3>
+        <p>We use the information we collect in the following ways:</p>
+        <ul>
+          <li><strong>Account Management:</strong> To create and manage your account, authenticate your identity, and provide customer support</li>
+          <li><strong>Service Improvement:</strong> To improve, develop, and personalize our Service, including analyzing usage patterns and user preferences</li>
+          <li><strong>Communication:</strong> To send you technical notices, updates, security alerts, and support messages</li>
+          <li><strong>Developer Features:</strong> To enable developer accounts, manage game submissions, and facilitate developer-admin communication</li>
+          <li><strong>Security:</strong> To detect, prevent, and address technical issues, fraud, and security threats</li>
+          <li><strong>Legal Compliance:</strong> To comply with legal obligations, enforce our Terms of Use, and protect our rights</li>
+        </ul>
+        <p>We will not sell, rent, or lease your personal information to third parties without your explicit consent, except as required by law or as necessary to provide the Service.</p>
       </div>
+
       <div class="doc-section">
-        <h3>4. Your Rights</h3>
-        <p>You can request deletion of your account and data via the <a href="#/contact" style="color: var(--accent-color);">contact page</a>.</p>
+        <h3>4. Data Storage and Security</h3>
+        <p><strong>4.1 Storage:</strong> Your personal information is stored on secure servers provided by Firebase/Google Cloud. We implement appropriate technical and organizational measures to protect your data against unauthorized access, alteration, disclosure, or destruction.</p>
+        <p><strong>4.2 Encryption:</strong> We use industry-standard encryption protocols to protect sensitive data in transit and at rest. Passwords are stored using strong cryptographic hashing algorithms.</p>
+        <p><strong>4.3 Data Retention:</strong> We retain your personal information for as long as necessary to provide the Service and fulfill the purposes outlined in this Privacy Policy. When you delete your account, we will delete your personal information within a reasonable time period, except where required by law to retain certain records.</p>
+        <p><strong>4.4 Local Storage:</strong> Some data, such as game ratings, favorites, and recent game history, may be stored in your browser's localStorage for performance and offline functionality. This data is not transmitted to our servers unless you choose to sync it.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>5. Sharing of Information</h3>
+        <p>We may share your personal information in the following circumstances:</p>
+        <ul>
+          <li><strong>Service Providers:</strong> We may share information with third-party service providers who perform services on our behalf, such as hosting, analytics, and email delivery. These providers have access to your information only to perform these tasks and are obligated not to disclose or use it for any other purpose.</li>
+          <li><strong>Legal Requirements:</strong> We may disclose information where we believe it is necessary to investigate, prevent, or take action regarding illegal activities, suspected fraud, potential threats to the safety of any person, or violations of our Terms of Use.</li>
+          <li><strong>Business Transfers:</strong> In the event of a merger, acquisition, or sale of all or a portion of our assets, your information may be transferred to the acquiring entity.</li>
+          <li><strong>With Your Consent:</strong> We may share your information with your consent for any other purpose.</li>
+        </ul>
+        <p>We do not sell your personal information to third parties for marketing purposes.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>6. Children's Privacy</h3>
+        <p>Our Service is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and you believe your child has provided us with personal information, please contact us via the <a href="#/contact" style="color: var(--accent-color);">contact page</a>, and we will delete such information.</p>
+        <p>If we discover that we have collected personal information from a child under 13 without verified parental consent, we will take steps to delete that information.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>7. Your Rights and Choices</h3>
+        <p>Depending on your location, you may have the following rights regarding your personal information:</p>
+        <ul>
+          <li><strong>Access:</strong> You can request access to the personal information we hold about you</li>
+          <li><strong>Correction:</strong> You can request correction of inaccurate or incomplete information</li>
+          <li><strong>Deletion:</strong> You can request deletion of your personal information, subject to certain legal exceptions</li>
+          <li><strong>Portability:</strong> You can request a copy of your personal information in a structured, commonly used format</li>
+          <li><strong>Objection:</strong> You can object to our processing of your personal information</li>
+          <li><strong>Restriction:</strong> You can request restriction of the processing of your personal information</li>
+        </ul>
+        <p>To exercise these rights, please contact us via the <a href="#/contact" style="color: var(--accent-color);">contact page</a>. We will respond to your request within 30 days.</p>
+        <p>You can also update your account information and preferences through your account settings page.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>8. Third-Party Links</h3>
+        <p>Our Service may contain links to third-party websites or services. We are not responsible for the privacy practices or content of these third parties. We encourage you to review the privacy policies of any third-party websites you visit.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>9. Changes to This Privacy Policy</h3>
+        <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.</p>
+        <p>You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>10. International Data Transfers</h3>
+        <p>Your information may be transferred to and maintained on computers located outside of your state, province, country, or other governmental jurisdiction where data protection laws may differ. If you are located outside Israel and choose to provide information to us, please note that we transfer the data, including personal data, to Israel and process it there.</p>
+        <p>Your consent to this Privacy Policy followed by your submission of such information represents your agreement to that transfer.</p>
+      </div>
+
+      <div class="doc-section">
+        <h3>11. Contact Information</h3>
+        <p>If you have any questions about this Privacy Policy, please contact us via the <a href="#/contact" style="color: var(--accent-color);">contact page</a>.</p>
+        <p>We will respond to your privacy inquiries within 30 days of receipt.</p>
       </div>
     </div>
   `;
@@ -5798,6 +5993,142 @@ async function renderContact() {
       }
     });
   }
+}
+
+// Render: LEADERBOARD
+async function renderLeaderboard() {
+  ensureContentPageStyles();
+  const main = document.getElementById('main-container');
+  
+  const categories = ['ALL', 'RPG', 'RETRO', 'MULTIPLAYER', 'ACTION', 'PUZZLE', 'ADVENTURE', 'SPORTS', 'STRATEGY', 'HORROR', 'RACING', 'SIMULATION'];
+  
+  main.innerHTML = `
+    <div class="top-header">
+      <div class="page-title-wrap">
+        <h1><i class="fas fa-trophy"></i> Game Leaderboard</h1>
+        <p style="color: var(--text-muted); margin-top: 5px;">Top games ranked by plays and ratings</p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <select id="leaderboard-category" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-main); font-size: 13px;">
+          ${categories.map(cat => `<option value="${cat}">${getCategoryIcon(cat)} ${cat}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <div class="admin-card-title"><i class="fas fa-chart-bar"></i> Top Games</div>
+      </div>
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Game</th>
+              <th>Category</th>
+              <th>Plays</th>
+              <th>Rating</th>
+              <th>Developer</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body">
+            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading leaderboard...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  const categorySelect = document.getElementById('leaderboard-category');
+  const leaderboardBody = document.getElementById('leaderboard-body');
+
+  async function renderLeaderboardTable(category) {
+    let games = [...state.games];
+    
+    if (category !== 'ALL') {
+      games = games.filter(g => g.categories && g.categories.includes(category));
+    }
+
+    // Sort by plays (descending), then by rating (descending)
+    games.sort((a, b) => {
+      const playsDiff = (b.plays || 0) - (a.plays || 0);
+      if (playsDiff !== 0) return playsDiff;
+      return (b.rating || 0) - (a.rating || 0);
+    });
+
+    // Take top 20 games
+    games = games.slice(0, 20);
+
+    if (games.length === 0) {
+      leaderboardBody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 40px;">
+            <i class="fas fa-trophy" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+            No games found in this category.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    leaderboardBody.innerHTML = games.map((game, index) => {
+      const rank = index + 1;
+      let rankStyle = '';
+      let rankIcon = rank;
+      
+      if (rank === 1) {
+        rankStyle = 'background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.1) 100%); border: 1px solid rgba(255, 215, 0, 0.4);';
+        rankIcon = '🥇';
+      } else if (rank === 2) {
+        rankStyle = 'background: linear-gradient(135deg, rgba(192, 192, 192, 0.2) 0%, rgba(192, 192, 192, 0.1) 100%); border: 1px solid rgba(192, 192, 192, 0.4);';
+        rankIcon = '🥈';
+      } else if (rank === 3) {
+        rankStyle = 'background: linear-gradient(135deg, rgba(205, 127, 50, 0.2) 0%, rgba(205, 127, 50, 0.1) 100%); border: 1px solid rgba(205, 127, 50, 0.4);';
+        rankIcon = '🥉';
+      }
+
+      const categoryDisplay = game.categories && game.categories.length > 0 
+        ? game.categories.map(c => `${getCategoryIcon(c)} ${c}`).join(', ')
+        : 'Uncategorized';
+
+      return `
+        <tr style="cursor: pointer;" onclick="navigateTo('#/game/${game.id}')">
+          <td>
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; ${rankStyle}">
+              ${rankIcon}
+            </span>
+          </td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <img src="${game.logoUrl}" onerror="this.src='https://placehold.co/40x40/12161e/00ff66?text=G'" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
+              <div>
+                <div style="font-weight: bold; color: var(--accent-color);">${game.name}</div>
+                <div style="font-size: 11px; color: var(--text-muted);">${game.howToPlay || 'No description'}</div>
+              </div>
+            </div>
+          </td>
+          <td>${categoryDisplay}</td>
+          <td style="font-weight: bold; color: var(--accent-color);">${game.plays || 0}</td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 5px;">
+              <i class="fas fa-star" style="color: #ffd700;"></i>
+              <span style="font-weight: bold;">${game.rating || 'N/A'}</span>
+            </div>
+          </td>
+          <td>${game.developerName || 'Unknown'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Initial render
+  await renderLeaderboardTable('ALL');
+
+  // Category change handler
+  categorySelect.addEventListener('change', async () => {
+    const selectedCategory = categorySelect.value;
+    await renderLeaderboardTable(selectedCategory);
+  });
 }
 
 // Render: BECOME DEVELOPER APPLICATION
