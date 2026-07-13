@@ -989,8 +989,7 @@ export async function getActiveGames() {
   try {
     const q = firebaseFirestore.query(
       firebaseFirestore.collection(db, "games"),
-      firebaseFirestore.where("approved", "==", true),
-      firebaseFirestore.orderBy("createdAt", "desc")
+      firebaseFirestore.where("approved", "==", true)
     );
     const snap = await firebaseFirestore.getDocs(q);
     const list = [];
@@ -999,6 +998,8 @@ export async function getActiveGames() {
       // Use the custom id field if present, otherwise use Firestore doc id
       list.push({ ...data, id: data.id || d.id });
     });
+    // Sort by createdAt in JavaScript instead of Firestore to avoid index requirement
+    list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     console.log("Loaded games from Firebase:", list.length);
     console.log("Games details:", list.map(g => ({ id: g.id, name: g.name, approved: g.approved })));
     return list;

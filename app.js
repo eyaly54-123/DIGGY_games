@@ -60,58 +60,6 @@ let state = {
   supportActiveThreadId: null
 };
 
-// --- DEFAULT GAMES PRE-POPULATION ---
-const PRESET_GAMES = [
-  {
-    id: "preset_snake",
-    name: "Neon Snake",
-    description: "The classic retro arcade game! Guide the neon snake to consume glowing particles, but avoid hitting yourself or the boundaries.",
-    logoUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=60",
-    githubUrl: "https://github.com/diggy-games/neon-snake",
-    howToPlay: "Use the arrow keys or WASD to navigate the snake. Eat green glowing particles to grow. The game ends if you collide with the walls or your own tail.",
-    targetAudience: "Everyone (All Ages)",
-    categories: ["RETRO", "RPG"],
-    developerUid: "system",
-    developerName: "DIGGY Core Devs",
-    approved: true,
-    rating: 4.8,
-    ratingCount: 156,
-    ratingSum: 748.8
-  },
-  {
-    id: "preset_bricks",
-    name: "Brick Breaker Glow",
-    description: "Bounce the ball and destroy the neon bricks in this fast-paced arcade retro classic. Collect multipliers and clear the screen!",
-    logoUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=150&auto=format&fit=crop&q=60",
-    githubUrl: "https://github.com/diggy-games/brick-breaker-glow",
-    howToPlay: "Move the paddle left and right using your Mouse or Left/Right arrow keys. Prevent the glowing orb from falling. Break all the colored neon bricks to win.",
-    targetAudience: "Kids 6+",
-    categories: ["RETRO", "MULTIPLAYER"],
-    developerUid: "system",
-    developerName: "DIGGY Core Devs",
-    approved: true,
-    rating: 4.6,
-    ratingCount: 98,
-    ratingSum: 450.8
-  },
-  {
-    id: "preset_evader",
-    name: "Space Laser Evader",
-    description: "Navigate your starfighter through an intense neon asteroid field. Shoot incoming targets and survive the onslaught!",
-    logoUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=150&auto=format&fit=crop&q=60",
-    githubUrl: "https://github.com/diggy-games/space-laser-evader",
-    howToPlay: "Move Left/Right using the Arrow keys or A/D keys. Fire your laser cannon using the Spacebar. Avoid colliding with space debris.",
-    targetAudience: "Teens 10+",
-    categories: ["RPG", "RETRO"],
-    developerUid: "system",
-    developerName: "DIGGY Core Devs",
-    approved: true,
-    rating: 4.9,
-    ratingCount: 203,
-    ratingSum: 994.7
-  }
-];
-
 // --- RATING HELPERS ---
 function getGameRatingInfo(game) {
   const rating = parseFloat(game.rating ?? 5.0);
@@ -803,11 +751,10 @@ function ensureContentPageStyles() {
 async function fetchGames() {
   try {
     const dbGames = await getActiveGames();
-    // Combine preset games with database games
-    state.games = [...PRESET_GAMES, ...dbGames.filter(g => !PRESET_GAMES.some(p => p.id === g.id))];
+    state.games = dbGames;
   } catch (err) {
-    console.warn("Could not pull games from Firebase, using presets only:", err);
-    state.games = [...PRESET_GAMES];
+    console.warn("Could not pull games from Firebase:", err);
+    state.games = [];
   }
 }
 
