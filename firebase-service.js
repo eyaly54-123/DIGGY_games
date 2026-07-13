@@ -840,16 +840,6 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
           console.error("Firebase version update failed:", e);
         }
       }
-      // Sync to localStorage
-      const games = getLocalStorageData('games');
-      const gameIdx = games.findIndex(g => g.id === requestData.parentGameId);
-      if (gameIdx !== -1) {
-        games[gameIdx].gameUrl = requestData.gameUrl;
-        games[gameIdx].githubUrl = requestData.githubUrl;
-        games[gameIdx].version = requestData.version;
-        games[gameIdx].latestChangelog = requestData.changelog;
-        saveLocalStorageData('games', games);
-      }
     } else {
       // Create new game — one ID, written to Firebase first
       newGameId = 'game_' + Math.random().toString(36).substr(2, 9);
@@ -873,18 +863,13 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
         createdAt: new Date().toISOString()
       };
 
-      if (firebaseLoaded) {
+      if (firebaseLoaded && !fallbackMode) {
         try {
           await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "games"), gamePayload);
         } catch (e) {
           console.error("Firebase game creation failed:", e);
         }
       }
-
-      // Sync to localStorage
-      const games = getLocalStorageData('games');
-      games.push(gamePayload);
-      saveLocalStorageData('games', games);
 
       requestData.gameId = newGameId;
     }
@@ -989,43 +974,36 @@ export async function directPublishGame(gameData) {
     }
   }
 
-  // Cache in localStorage
-  const games = getLocalStorageData('games');
-  games.push(newGame);
-  saveLocalStorageData('games', games);
-
   return newGame;
 }
 
 export async function getActiveGames() {
-  // Wait for Firebase to finish loading before deciding the source
+  // Wait for Firebase to finish loading
   await firebaseReadyPromise;
 
-  if (firebaseLoaded && !fallbackMode) {
-    try {
-      const q = firebaseFirestore.query(
-        firebaseFirestore.collection(db, "games"),
-        firebaseFirestore.where("approved", "==", true),
-        firebaseFirestore.orderBy("createdAt", "desc")
-      );
-      const snap = await firebaseFirestore.getDocs(q);
-      const list = [];
-      snap.forEach(d => {
-        const data = d.data();
-        // Use the custom id field if present, otherwise use Firestore doc id
-        list.push({ ...data, id: data.id || d.id });
-      });
-      // Cache in localStorage for offline resilience
-      saveLocalStorageData('games', list);
-      console.log("Loaded games from Firebase:", list.length);
-      return list;
-    } catch (e) {
-      console.warn("Firebase load active games failed, falling back to cache:", e);
-    }
+  if (!firebaseLoaded || fallbackMode) {
+    throw new Error("Firebase is not available. Cannot load games.");
   }
 
-  // True offline / fallback mode: use localStorage cache only
-  return getLocalStorageData('games').filter(g => g.approved === true);
+  try {
+    const q = firebaseFirestore.query(
+      firebaseFirestore.collection(db, "games"),
+      firebaseFirestore.where("approved", "==", true),
+      firebaseFirestore.orderBy("createdAt", "desc")
+    );
+    const snap = await firebaseFirestore.getDocs(q);
+    const list = [];
+    snap.forEach(d => {
+      const data = d.data();
+      // Use the custom id field if present, otherwise use Firestore doc id
+      list.push({ ...data, id: data.id || d.id });
+    });
+    console.log("Loaded games from Firebase:", list.length);
+    return list;
+  } catch (e) {
+    console.error("Firebase load active games failed:", e);
+    throw new Error("Failed to load games from Firebase");
+  }
 }
 
 export function debugLocalStorageGames() {
@@ -1097,15 +1075,6 @@ export async function updateGameDetails(gameId, updatedData) {
     } catch (e) {
       console.warn("Firebase game update failed:", e);
     }
-  }
-
-  // Sync to localStorage cache
-  const games = getLocalStorageData('games');
-  const idx = games.findIndex(g => g.id === gameId);
-  if (idx !== -1) {
-    games[idx] = { ...games[idx], ...updatedData };
-    saveLocalStorageData('games', games);
-    if (!updatedGame) updatedGame = games[idx];
   }
 
   if (!updatedGame) throw new Error("Game not found");
@@ -1387,37 +1356,31 @@ async function sendStatusEmail(to, name, type, status, reason) {
 }
 
 export async function recordGamePlay(gameId) {
-  // Update LocalStorage
-  const games = getLocalStorageData('games');
-  const idx = games.findIndex(g => g.id === gameId);
-  if (idx !== -1) {
-    games[idx].plays = (games[idx].plays || 0) + 1;
-    saveLocalStorageData('games', games);
+  if (!firebaseLoaded || fallbackMode) {
+    throw new Error("Firebase is not available. Cannot record game play.");
   }
 
-  // Update Firebase
-  if (firebaseLoaded) {
-    try {
-      const ref = firebaseFirestore.collection(db, "games");
-      const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
-      const snap = await firebaseFirestore.getDocs(q);
-      if (!snap.empty) {
-        const docId = snap.docs[0].id;
-        const currentPlays = snap.docs[0].data().plays || 0;
-        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", docId), {
-          plays: currentPlays + 1
-        });
-      } else {
-        const docRef = firebaseFirestore.doc(db, "games", gameId);
-        const docSnap = await firebaseFirestore.getDoc(docRef);
-        if (docSnap.exists()) {
-          const currentPlays = docSnap.data().plays || 0;
-          await firebaseFirestore.updateDoc(docRef, { plays: currentPlays + 1 });
-        }
+  try {
+    const ref = firebaseFirestore.collection(db, "games");
+    const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
+    const snap = await firebaseFirestore.getDocs(q);
+    if (!snap.empty) {
+      const docId = snap.docs[0].id;
+      const currentPlays = snap.docs[0].data().plays || 0;
+      await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", docId), {
+        plays: currentPlays + 1
+      });
+    } else {
+      const docRef = firebaseFirestore.doc(db, "games", gameId);
+      const docSnap = await firebaseFirestore.getDoc(docRef);
+      if (docSnap.exists()) {
+        const currentPlays = docSnap.data().plays || 0;
+        await firebaseFirestore.updateDoc(docRef, { plays: currentPlays + 1 });
       }
-    } catch (e) {
-      console.warn("Firebase record gameplay failed:", e);
     }
+  } catch (e) {
+    console.error("Firebase record gameplay failed:", e);
+    throw new Error("Failed to record game play");
   }
 }
 
@@ -1450,61 +1413,40 @@ export async function submitGameVersionRequest(gameId, versionData) {
 
 export async function rateGame(gameId, score) {
   console.log(`Rating game ${gameId} with score ${score}`);
-  
-  const games = getLocalStorageData('games');
-  const idx = games.findIndex(g => g.id === gameId);
-  let newRating = 5.0;
-  
-  if (idx !== -1) {
-    const currentSum = games[idx].ratingSum || 0;
-    const currentCount = games[idx].ratingCount || 0;
-    const nextSum = currentSum + score;
-    const nextCount = currentCount + 1;
-    newRating = parseFloat((nextSum / nextCount).toFixed(1));
-    
-    console.log(`Local rating update: sum=${currentSum} -> ${nextSum}, count=${currentCount} -> ${nextCount}, newRating=${newRating}`);
-    
-    games[idx].ratingSum = nextSum;
-    games[idx].ratingCount = nextCount;
-    games[idx].rating = newRating;
-    saveLocalStorageData('games', games);
-  } else {
-    console.warn(`Game ${gameId} not found in local storage`);
+
+  if (!firebaseLoaded || fallbackMode) {
+    throw new Error("Firebase is not available. Cannot rate game.");
   }
 
-  if (firebaseLoaded) {
-    try {
-      const ref = firebaseFirestore.collection(db, "games");
-      const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
-      const snap = await firebaseFirestore.getDocs(q);
-      if (!snap.empty) {
-        const docId = snap.docs[0].id;
-        const data = snap.docs[0].data();
-        const currentSum = data.ratingSum || 0;
-        const currentCount = data.ratingCount || 0;
-        const nextSum = currentSum + score;
-        const nextCount = currentCount + 1;
-        const avg = parseFloat((nextSum / nextCount).toFixed(1));
-        
-        console.log(`Firebase rating update: sum=${currentSum} -> ${nextSum}, count=${currentCount} -> ${nextCount}, newRating=${avg}`);
-        
-        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", docId), {
-          ratingSum: nextSum,
-          ratingCount: nextCount,
-          rating: avg
-        });
-        console.log("Firebase rating update successful");
-      } else {
-        console.warn(`Game ${gameId} not found in Firebase`);
-      }
-    } catch (e) {
-      console.error("Firebase rate game failed:", e);
+  try {
+    const ref = firebaseFirestore.collection(db, "games");
+    const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
+    const snap = await firebaseFirestore.getDocs(q);
+    if (!snap.empty) {
+      const docId = snap.docs[0].id;
+      const data = snap.docs[0].data();
+      const currentSum = data.ratingSum || 0;
+      const currentCount = data.ratingCount || 0;
+      const nextSum = currentSum + score;
+      const nextCount = currentCount + 1;
+      const avg = parseFloat((nextSum / nextCount).toFixed(1));
+
+      console.log(`Firebase rating update: sum=${currentSum} -> ${nextSum}, count=${currentCount} -> ${nextCount}, newRating=${avg}`);
+
+      await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", docId), {
+        ratingSum: nextSum,
+        ratingCount: nextCount,
+        rating: avg
+      });
+      console.log("Firebase rating update successful");
+      return avg;
+    } else {
+      throw new Error("Game not found in Firebase");
     }
-  } else {
-    console.log("Firebase not connected, rating saved locally only");
+  } catch (e) {
+    console.error("Firebase rate game failed:", e);
+    throw new Error("Failed to rate game");
   }
-  
-  return newRating;
 }
 
 export { auth };
