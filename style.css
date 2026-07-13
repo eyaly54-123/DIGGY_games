@@ -230,6 +230,23 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
 }
 
+.sidebar-top {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Nav area wrapper — holds nav-menu + custom scrollbar */
+#sidebar-nav-area {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .logo-container {
   display: flex;
   align-items: center;
@@ -251,27 +268,58 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex-grow: 1;
-  overflow-y: auto;
-  padding-right: 5px;
+  flex: 1;
+  overflow-y: scroll;
+  padding-right: 12px; /* space for custom scrollbar */
+  scrollbar-width: none; /* Firefox */
 }
 
 .nav-menu::-webkit-scrollbar {
-  width: 6px;
+  display: none; /* Chrome/Safari — replaced by custom scrollbar */
 }
 
-.nav-menu::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
+/* Custom accent-colored sidebar scrollbar */
+.custom-nav-scrollbar {
+  position: absolute;
+  right: 2px;
+  top: 6px;
+  bottom: 6px;
+  width: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  display: none; /* hidden when content fits; shown via JS */
 }
 
-.nav-menu::-webkit-scrollbar-thumb {
-  background: var(--accent-dim);
-  border-radius: 3px;
+#sidebar-nav-area:hover .custom-nav-scrollbar,
+.custom-nav-scrollbar.visible {
+  opacity: 1;
 }
 
-.nav-menu::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-glow);
+.custom-nav-scrollbar-thumb {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: var(--accent-color);
+  box-shadow: 0 0 7px var(--accent-glow);
+  border-radius: 4px;
+  cursor: grab;
+  transition: box-shadow 0.2s, transform 0.1s;
+  min-height: 28px;
+  user-select: none;
+}
+
+.custom-nav-scrollbar-thumb:hover {
+  box-shadow: 0 0 13px var(--accent-glow);
+  transform: scaleX(1.15);
+}
+
+.custom-nav-scrollbar-thumb.dragging {
+  cursor: grabbing;
+  box-shadow: 0 0 18px var(--accent-glow);
+  transform: scaleX(1.25);
 }
 
 .nav-item {
@@ -1157,8 +1205,13 @@ h1, h2, h3, h4, h5, h6 {
   .nav-menu {
     flex-direction: row;
     overflow-x: auto;
+    overflow-y: hidden;
     gap: 10px;
     padding-bottom: 10px;
+    padding-right: 0;
+  }
+  .custom-nav-scrollbar {
+    display: none !important;
   }
   .nav-section-title {
     display: none;

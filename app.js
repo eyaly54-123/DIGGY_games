@@ -832,6 +832,100 @@ function setupSidebarNavigation() {
       navigateTo('#/admin');
     });
   }
+
+  // Init custom scrollbar after nav content is rendered
+  requestAnimationFrame(initCustomNavScrollbar);
+}
+
+// Custom accent scrollbar for the sidebar nav menu
+let _navScrollbarCleanup = null;
+function initCustomNavScrollbar() {
+  // Tear down any previous listeners
+  if (_navScrollbarCleanup) { _navScrollbarCleanup(); _navScrollbarCleanup = null; }
+
+  const navMenu = document.getElementById('sidebar-nav-menu');
+  const track   = document.getElementById('custom-nav-scrollbar');
+  const thumb   = document.getElementById('custom-nav-scrollbar-thumb');
+  if (!navMenu || !track || !thumb) return;
+
+  function syncThumb() {
+    const overflows = navMenu.scrollHeight > navMenu.clientHeight + 2;
+    track.style.display = overflows ? 'block' : 'none';
+    track.classList.toggle('visible', overflows);
+    if (!overflows) return;
+
+    const trackH  = track.clientHeight;
+    const thumbH  = Math.max(28, (navMenu.clientHeight / navMenu.scrollHeight) * trackH);
+    const scrollR = navMenu.scrollTop / (navMenu.scrollHeight - navMenu.clientHeight);
+    thumb.style.height = thumbH + 'px';
+    thumb.style.top    = (scrollR * (trackH - thumbH)) + 'px';
+  }
+
+  // Sync on scroll and resize
+  navMenu.addEventListener('scroll', syncThumb);
+  const ro = new ResizeObserver(syncThumb);
+  ro.observe(navMenu);
+  syncThumb();
+
+  // Drag thumb
+  let dragging = false, startY = 0, startScroll = 0;
+
+  function onThumbDown(e) {
+    e.preventDefault();
+    dragging = true;
+    startY = e.clientY;
+    startScroll = navMenu.scrollTop;
+    thumb.classList.add('dragging');
+    track.classList.add('visible');
+  }
+
+  function onDocMove(e) {
+    if (!dragging) return;
+    const trackH = track.clientHeight;
+    const thumbH = thumb.clientHeight;
+    const delta  = (e.clientY - startY) / (trackH - thumbH);
+    navMenu.scrollTop = Math.max(0,
+      Math.min(navMenu.scrollHeight - navMenu.clientHeight,
+        startScroll + delta * (navMenu.scrollHeight - navMenu.clientHeight)));
+  }
+
+  function onDocUp() {
+    if (!dragging) return;
+    dragging = false;
+    thumb.classList.remove('dragging');
+  }
+
+  thumb.addEventListener('mousedown', onThumbDown);
+  document.addEventListener('mousemove', onDocMove);
+  document.addEventListener('mouseup', onDocUp);
+
+  // Click on track to jump
+  function onTrackClick(e) {
+    if (e.target === thumb) return;
+    const rect   = track.getBoundingClientRect();
+    const thumbH = thumb.clientHeight;
+    const ratio  = Math.max(0, Math.min(1,
+      (e.clientY - rect.top - thumbH / 2) / (track.clientHeight - thumbH)));
+    navMenu.scrollTop = ratio * (navMenu.scrollHeight - navMenu.clientHeight);
+  }
+  track.addEventListener('click', onTrackClick);
+
+  // Wheel on scrollbar moves the list
+  function onTrackWheel(e) {
+    e.preventDefault();
+    navMenu.scrollTop += e.deltaY;
+  }
+  track.addEventListener('wheel', onTrackWheel, { passive: false });
+
+  _navScrollbarCleanup = () => {
+    navMenu.removeEventListener('scroll', syncThumb);
+    ro.disconnect();
+    thumb.removeEventListener('mousedown', onThumbDown);
+    document.removeEventListener('mousemove', onDocMove);
+    document.removeEventListener('mouseup', onDocUp);
+    track.removeEventListener('click', onTrackClick);
+    track.removeEventListener('wheel', onTrackWheel);
+  };
 }
 
 function setupFooterNavigation() {
