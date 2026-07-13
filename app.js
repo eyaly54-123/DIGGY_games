@@ -2794,9 +2794,11 @@ async function renderAdmin() {
                 saveLocalStorageData('bug_reports', reports);
               }
               showToast('Bug report marked as resolved', 'success');
+              await fetchBugReports();
               renderAdmin();
             } catch (err) {
-              showToast('Failed to update bug report', 'danger');
+              console.error('Error updating bug report:', err);
+              showToast('Failed to update bug report: ' + err.message, 'danger');
             }
           }
         });
