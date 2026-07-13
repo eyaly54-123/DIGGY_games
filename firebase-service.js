@@ -866,6 +866,7 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
       if (firebaseLoaded && !fallbackMode) {
         try {
           await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "games"), gamePayload);
+          console.log("Game created in Firebase with ID:", newGameId, "and approved:", gamePayload.approved);
         } catch (e) {
           console.error("Firebase game creation failed:", e);
         }
@@ -999,6 +1000,7 @@ export async function getActiveGames() {
       list.push({ ...data, id: data.id || d.id });
     });
     console.log("Loaded games from Firebase:", list.length);
+    console.log("Games details:", list.map(g => ({ id: g.id, name: g.name, approved: g.approved })));
     return list;
   } catch (e) {
     console.error("Firebase load active games failed:", e);
