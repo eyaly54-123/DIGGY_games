@@ -766,6 +766,12 @@ function setupSidebarNavigation() {
 
   navMenu.innerHTML = navItems;
 
+  // Set initial active state for ALL category
+  const allCategoryItem = navMenu.querySelector('[data-category="ALL"]');
+  if (allCategoryItem) {
+    allCategoryItem.classList.add('active');
+  }
+
   // Bind click events
   document.getElementById('home-nav-btn').addEventListener('click', () => {
     navigateTo('#/');
@@ -783,6 +789,11 @@ function setupSidebarNavigation() {
     item.addEventListener('click', () => {
       const category = item.getAttribute('data-category');
       navigateTo('#/');
+      // Update active state on sidebar items
+      navMenu.querySelectorAll('[data-category]').forEach(catItem => {
+        catItem.classList.remove('active');
+      });
+      item.classList.add('active');
       // Wait for home to render, then filter
       setTimeout(() => {
         renderGamesGrid(category);
