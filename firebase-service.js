@@ -18,9 +18,8 @@ let fallbackMode = false;
 
 // Export for UI status checking
 export function getFirebaseStatus() {
-  if (fallbackMode) return { connected: false, mode: 'local', message: 'Local mode - games NOT shared between users' };
   if (firebaseLoaded) return { connected: true, mode: 'firebase', message: 'Connected - games shared across all users' };
-  return { connected: false, mode: 'loading', message: 'Connecting to Firebase...' };
+  return { connected: false, mode: 'local', message: 'Local mode - games NOT shared between users' };
 }
 
 // Dynamic imports of Firebase services
@@ -68,8 +67,7 @@ async function initFirebase() {
       checkLocalSession();
     });
   } catch (e) {
-    console.warn("Firebase SDK failed to load from CDN. Operating in local-only fallback mode. Games will NOT be shared between users!", e);
-    fallbackMode = true;
+    console.warn("Firebase SDK failed to load from CDN. Operating in local-only mode for this session.", e);
     checkLocalSession();
   }
 }
@@ -304,7 +302,7 @@ if (getLocalStorageData('users').length === 0) {
 export function onAuthStateListener(callback) {
   authCallbacks.push(callback);
   // Trigger callback immediately with currently loaded local state
-  if (fallbackMode || firebaseLoaded) {
+  if (firebaseLoaded) {
     callback(currentLocalUser);
   }
 }
@@ -342,7 +340,7 @@ export async function signUpUser(username, password) {
   };
 
   // Try Firebase register first, if available and not blocked
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const email = getEmailForUsername(cleanUsername);
       
@@ -378,8 +376,7 @@ export async function signUpUser(username, password) {
       if (error.code === 'auth/weak-password') {
         throw new Error("Password is too weak!");
       }
-      fallbackMode = true;
-      console.log("Switched to LocalStorage fallback due to error:", error.message || error);
+      console.log("Firebase sign up failed, using local storage:", error.message || error);
     }
   }
 
@@ -431,8 +428,7 @@ export async function logInUser(username, password) {
       ) {
         throw new Error("Incorrect username or password!");
       }
-      fallbackMode = true; // Switch to local backup
-      console.log("Switched to LocalStorage login fallback due to error:", error.message || error);
+      console.log("Firebase login failed, using local storage:", error.message || error);
     }
   }
 
@@ -463,7 +459,7 @@ export async function logOutUser() {
   localStorage.removeItem('diggy_logged_in_uid');
   currentLocalUser = null;
 
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       await firebaseAuth.signOut(auth);
     } catch (e) {
@@ -478,7 +474,7 @@ export async function logOutUser() {
  * Get user profile details
  */
 export async function getUserProfile(uid) {
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const docRef = firebaseFirestore.doc(db, "users", uid);
       const docSnap = await firebaseFirestore.getDoc(docRef);
@@ -511,7 +507,7 @@ export async function updateUserProfile(uid, data) {
     }
   }
 
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const docRef = firebaseFirestore.doc(db, "users", uid);
       await firebaseFirestore.updateDoc(docRef, data);
@@ -530,7 +526,7 @@ export async function changeUserPassword(newPassword) {
     throw new Error("Password must be between 6 and 12 characters.");
   }
 
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const user = auth.currentUser;
       if (user) {
@@ -550,7 +546,7 @@ export async function changeUserPassword(newPassword) {
  * Get all user profile documents (Admin only)
  */
 export async function getAllUsers() {
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const q = firebaseFirestore.query(firebaseFirestore.collection(db, "users"));
       const snap = await firebaseFirestore.getDocs(q);
@@ -587,7 +583,7 @@ export async function submitDeveloperRequest(uid, username, reason, contactEmail
   };
 
   // Check Firebase for existing pending request (cross-device)
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const ref = firebaseFirestore.collection(db, "developer_requests");
       const q = firebaseFirestore.query(ref, firebaseFirestore.where("uid", "==", uid), firebaseFirestore.where("status", "==", "pending"));
@@ -607,7 +603,7 @@ export async function submitDeveloperRequest(uid, username, reason, contactEmail
   requests.push(requestDoc);
   saveLocalStorageData('developer_requests', requests);
 
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "developer_requests"), requestDoc);
     } catch (e) {
@@ -619,7 +615,7 @@ export async function submitDeveloperRequest(uid, username, reason, contactEmail
 }
 
 export async function getDeveloperRequests() {
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const q = firebaseFirestore.query(firebaseFirestore.collection(db, "developer_requests"), firebaseFirestore.orderBy("createdAt", "desc"));
       const snap = await firebaseFirestore.getDocs(q);
@@ -639,7 +635,7 @@ export async function handleDeveloperRequest(requestId, status, adminReason) {
   let fbDocId = null;
 
   // 1. Try Firebase first (cross-device authoritative source)
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const ref = firebaseFirestore.collection(db, "developer_requests");
       // Search by custom id field stored in the document
@@ -676,7 +672,7 @@ export async function handleDeveloperRequest(requestId, status, adminReason) {
   }
 
   // 3. Update Firebase
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const ref = firebaseFirestore.collection(db, "developer_requests");
       const targetDocId = fbDocId || (await (async () => {
@@ -725,7 +721,7 @@ export async function submitGameRequest(gameData) {
   };
 
   // Check Firebase for rejected status (cross-device)
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const ref = firebaseFirestore.collection(db, "game_requests");
       const q = firebaseFirestore.query(ref, firebaseFirestore.where("githubUrl", "==", gameData.githubUrl), firebaseFirestore.where("status", "==", "rejected"));
@@ -745,7 +741,7 @@ export async function submitGameRequest(gameData) {
   requests.push(requestDoc);
   saveLocalStorageData('game_requests', requests);
 
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "game_requests"), requestDoc);
     } catch (e) {
@@ -757,7 +753,7 @@ export async function submitGameRequest(gameData) {
 }
 
 export async function getDeveloperGameRequests(developerUid) {
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const q = firebaseFirestore.query(
         firebaseFirestore.collection(db, "game_requests"), 
@@ -776,7 +772,7 @@ export async function getDeveloperGameRequests(developerUid) {
 }
 
 export async function getPendingGameRequests() {
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const q = firebaseFirestore.query(firebaseFirestore.collection(db, "game_requests"));
       const snap = await firebaseFirestore.getDocs(q);
@@ -796,7 +792,7 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
   let fbRequestDocId = null;
 
   // 1. Fetch from Firebase first (cross-device authoritative source)
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const ref = firebaseFirestore.collection(db, "game_requests");
       const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", requestId));
@@ -832,7 +828,7 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
   if (status === 'approved') {
     if (requestData.type === 'version_update') {
       // Update existing game in Firebase
-      if (firebaseLoaded && !fallbackMode) {
+      if (firebaseLoaded) {
         try {
           const gameRef = firebaseFirestore.collection(db, "games");
           const qGame = firebaseFirestore.query(gameRef, firebaseFirestore.where("id", "==", requestData.parentGameId));
@@ -882,7 +878,7 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
         createdAt: new Date().toISOString()
       };
 
-      if (firebaseLoaded && !fallbackMode) {
+      if (firebaseLoaded) {
         try {
           await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "games"), gamePayload);
         } catch (e) {
@@ -900,7 +896,7 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
   }
 
   // 5. Update game request status in Firebase
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const updatePayload = { status, adminSuggestions, ...(newGameId ? { gameId: newGameId } : {}) };
       if (fbRequestDocId) {
@@ -952,7 +948,7 @@ export async function updateAndResubmitGameRequest(requestId, updatedData) {
   };
 
   // Update Firebase by custom id field (cross-device)
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const ref = firebaseFirestore.collection(db, "game_requests");
       const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", requestId));
@@ -993,7 +989,7 @@ export async function directPublishGame(gameData) {
   games.push(newGame);
   saveLocalStorageData('games', games);
 
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "games"), newGame);
     } catch (e) {
@@ -1005,7 +1001,7 @@ export async function directPublishGame(gameData) {
 }
 
 export async function getActiveGames() {
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const q = firebaseFirestore.query(
         firebaseFirestore.collection(db, "games"), 
@@ -1103,7 +1099,7 @@ export async function updateGameDetails(gameId, updatedData) {
   }
 
   // Update in Firebase
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const ref = firebaseFirestore.collection(db, "games");
       const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
@@ -1334,7 +1330,7 @@ export async function sendEmailViaResend(to, subject, htmlContent) {
   };
   
   // Store email log in Firebase for tracking
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "email_logs"), emailLog);
     } catch (e) {
@@ -1404,7 +1400,7 @@ export async function recordGamePlay(gameId) {
   }
 
   // Update Firebase
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const ref = firebaseFirestore.collection(db, "games");
       const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
@@ -1445,7 +1441,7 @@ export async function submitGameVersionRequest(gameId, versionData) {
   requests.push(requestDoc);
   saveLocalStorageData('game_requests', requests);
 
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "game_requests"), requestDoc);
     } catch (e) {
@@ -1480,7 +1476,7 @@ export async function rateGame(gameId, score) {
     console.warn(`Game ${gameId} not found in local storage`);
   }
 
-  if (firebaseLoaded && !fallbackMode) {
+  if (firebaseLoaded) {
     try {
       const ref = firebaseFirestore.collection(db, "games");
       const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));

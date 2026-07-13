@@ -2426,28 +2426,38 @@ async function renderGameDetails(gameId) {
       const gameScreenPanel = document.querySelector('.game-screen-panel');
       const gameSidebarPanel = document.querySelector('.game-sidebar-panel');
       
-      if (gameScreenPanel.style.position === 'fixed') {
-        // Restore normal view
-        gameScreenPanel.style.position = '';
-        gameScreenPanel.style.top = '';
-        gameScreenPanel.style.left = '';
-        gameScreenPanel.style.width = '';
-        gameScreenPanel.style.height = '';
-        gameScreenPanel.style.zIndex = '';
-        gameScreenPanel.style.background = '';
-        gameSidebarPanel.style.display = '';
-        enlargeBtn.innerHTML = '<i class="fas fa-expand"></i> Enlarge';
+      if (!document.fullscreenElement) {
+        // Request true fullscreen
+        if (gameScreenPanel.requestFullscreen) {
+          gameScreenPanel.requestFullscreen();
+        } else if (gameScreenPanel.webkitRequestFullscreen) {
+          gameScreenPanel.webkitRequestFullscreen();
+        } else if (gameScreenPanel.msRequestFullscreen) {
+          gameScreenPanel.msRequestFullscreen();
+        }
+        enlargeBtn.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
       } else {
-        // Enlarge to fullscreen
-        gameScreenPanel.style.position = 'fixed';
-        gameScreenPanel.style.top = '0';
-        gameScreenPanel.style.left = '0';
-        gameScreenPanel.style.width = '100vw';
-        gameScreenPanel.style.height = '100vh';
-        gameScreenPanel.style.zIndex = '9999';
-        gameScreenPanel.style.background = '#07080a';
-        gameSidebarPanel.style.display = 'none';
-        enlargeBtn.innerHTML = '<i class="fas fa-compress"></i> Shrink';
+        // Exit fullscreen
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+        enlargeBtn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+      }
+    });
+
+    // Listen for fullscreen changes to update button and sidebar
+    document.addEventListener('fullscreenchange', () => {
+      const gameSidebarPanel = document.querySelector('.game-sidebar-panel');
+      if (document.fullscreenElement) {
+        enlargeBtn.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
+        if (gameSidebarPanel) gameSidebarPanel.style.display = 'none';
+      } else {
+        enlargeBtn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+        if (gameSidebarPanel) gameSidebarPanel.style.display = '';
       }
     });
   }
