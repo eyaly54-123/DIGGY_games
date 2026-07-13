@@ -404,7 +404,8 @@ const routes = {
   '#/terms': renderTerms,
   '#/privacy': renderPrivacy,
   '#/contact': renderContact,
-  '#/game/:id': renderGameDetails
+  '#/game/:id': renderGameDetails,
+  '#/become-developer': renderBecomeDeveloper
 };
 
 function navigateTo(route) {
@@ -541,6 +542,16 @@ function setupSidebarNavigation() {
 
   // Add role-specific navigation
   if (state.user) {
+    if (state.user.role === 'player') {
+      navItems += `
+        <div class="nav-section-title">Developer</div>
+        <div class="nav-item" id="become-dev-nav-btn" data-route="#/become-developer">
+          <i class="fas fa-user-plus"></i>
+          <span>Become a Developer</span>
+        </div>
+      `;
+    }
+
     if (state.user.role === 'developer' || state.user.role === 'admin') {
       navItems += `
         <div class="nav-section-title">Development</div>
@@ -605,6 +616,13 @@ function setupSidebarNavigation() {
   });
 
   // Role-specific navigation
+  const becomeDevNav = document.getElementById('become-dev-nav-btn');
+  if (becomeDevNav) {
+    becomeDevNav.addEventListener('click', () => {
+      navigateTo('#/become-developer');
+    });
+  }
+
   const devNav = document.getElementById('dev-nav-btn');
   if (devNav) {
     devNav.addEventListener('click', () => {
@@ -3083,39 +3101,6 @@ export function renderSettings() {
       </div>
     </div>
 
-    <!-- Become a Developer Application Form (If player role) -->
-    ${state.user.role === 'player' ? `
-      <div class="settings-card" style="margin-top: 30px; max-width: 100%;">
-        <div class="settings-card-header" style="border-left: 4px solid var(--accent-color); padding-left: 10px;">
-          <h2 class="settings-card-title">Request to Become a DIGGY Game Developer</h2>
-        </div>
-        <div class="modal-body">
-          <form id="dev-application-form">
-            <p style="font-size: 14px; margin-bottom: 20px; color: var(--text-muted);">
-              Want to upload your GitHub games to a site where kids from all over the world will play them? Fill out the following request and it will be sent to the Admin team.
-            </p>
-            <div class="form-group">
-              <label>Reason (why would you like to be a developer on the site and which games would you like to upload?)</label>
-              <textarea id="dev-app-reason" required placeholder="I want to be a developer because..." rows="3"></textarea>
-            </div>
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-              <div class="form-group" style="flex: 1; min-width: 220px;">
-                <label>Security Email (to send a styled approval / rejection notice)</label>
-                <input type="email" id="dev-app-email" required placeholder="name@example.com">
-              </div>
-              <div class="form-group" style="flex: 1; min-width: 220px;">
-                <label>Verification Password (to secure the request)</label>
-                <input type="password" id="dev-app-pass" required placeholder="Enter your current account password">
-              </div>
-            </div>
-
-            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
-              <i class="fas fa-file-signature"></i> Submit Developer Request
-            </button>
-          </form>
-        </div>
-      </div>
-    ` : ''}
   `;
 
   // Bind settings profile username update
@@ -3843,6 +3828,280 @@ async function renderContact() {
       }
     });
   }
+}
+
+// Render: BECOME DEVELOPER APPLICATION
+async function renderBecomeDeveloper() {
+  const main = document.getElementById('main-container');
+
+  if (!state.user || state.user.role !== 'player') {
+    main.innerHTML = `
+      <div style="text-align: center; padding: 80px 0;">
+        <i class="fas fa-user-check" style="font-size: 64px; color: var(--accent-color); margin-bottom: 20px;"></i>
+        <h2>Already a Developer!</h2>
+        <p style="color: var(--text-muted); margin-top: 10px;">You already have developer access.</p>
+        <button class="btn btn-primary" onclick="window.location.hash='#/dev'" style="margin-top: 20px;">Go to Developer Panel</button>
+      </div>
+    `;
+    return;
+  }
+
+  main.innerHTML = `
+    <div style="max-width: 900px; margin: 40px auto; padding: 0 20px;">
+      <div style="text-align: center; margin-bottom: 40px;">
+        <i class="fas fa-code" style="font-size: 48px; color: var(--accent-color); margin-bottom: 20px;"></i>
+        <h1 style="font-size: 32px; margin-bottom: 10px;">Become a DIGGY Developer</h1>
+        <p style="color: var(--text-muted); font-size: 16px;">Share your games with players from around the world!</p>
+      </div>
+
+      <form id="become-developer-form" style="background: var(--card-bg); padding: 30px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" id="dev-full-name" required placeholder="Your full name">
+          </div>
+          <div class="form-group">
+            <label>Username on Site *</label>
+            <input type="text" id="dev-username" required value="${state.user.username}" readonly style="background: rgba(255,255,255,0.05);">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Email Address *</label>
+          <input type="email" id="dev-email" required placeholder="your@email.com">
+        </div>
+
+        <div class="form-group">
+          <label>Developer / Studio Name (if applicable)</label>
+          <input type="text" id="dev-studio-name" placeholder="Your studio or developer name">
+        </div>
+
+        <div class="form-group">
+          <label>Age / Age Range *</label>
+          <select id="dev-age" required>
+            <option value="">Select your age range</option>
+            <option value="under-13">Under 13</option>
+            <option value="13-17">13-17</option>
+            <option value="18-24">18-24</option>
+            <option value="25-34">25-34</option>
+            <option value="35-44">35-44</option>
+            <option value="45+">45+</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Tell us about yourself as a developer *</label>
+          <textarea id="dev-about" required rows="3" placeholder="Your experience, background, what drives you..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>How long have you been developing games? *</label>
+          <select id="dev-experience" required>
+            <option value="">Select experience level</option>
+            <option value="less-than-1">Less than 1 year</option>
+            <option value="1-2">1-2 years</option>
+            <option value="3-5">3-5 years</option>
+            <option value="5-10">5-10 years</option>
+            <option value="10+">10+ years</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Which engines or tools do you use? *</label>
+          <input type="text" id="dev-tools" required placeholder="Unity, Unreal Engine, Godot, Roblox Studio, HTML/JavaScript, etc.">
+        </div>
+
+        <div class="form-group">
+          <label>Have you developed games before? *</label>
+          <select id="dev-past-games" required>
+            <option value="">Select an option</option>
+            <option value="yes">Yes, I have published games</option>
+            <option value="wip">Yes, but they are works in progress</option>
+            <option value="learning">No, I'm still learning</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Link to previous game / project (optional)</label>
+          <input type="url" id="dev-previous-game" placeholder="https://...">
+        </div>
+
+        <div class="form-group">
+          <label>Link to portfolio / GitHub / itch.io (optional)</label>
+          <input type="url" id="dev-portfolio" placeholder="https://...">
+        </div>
+
+        <div class="form-group">
+          <label>What type of games do you develop? *</label>
+          <input type="text" id="dev-game-types" required placeholder="Action, RPG, Puzzle, etc.">
+        </div>
+
+        <div class="form-group">
+          <label>Why do you want to become a developer on our site? *</label>
+          <textarea id="dev-reason" required rows="3" placeholder="Your motivation and goals..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>What do you plan to upload to the site? *</label>
+          <textarea id="dev-plans" required rows="2" placeholder="Describe the games you want to share..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Are all games and content you upload yours, or do you have permission to use them? *</label>
+          <select id="dev-ownership" required>
+            <option value="">Select an option</option>
+            <option value="yes">Yes, everything is mine or I have permission</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Do you commit to NOT uploading viruses, malicious code, or dangerous files? *</label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="dev-no-malware" required style="width: auto;">
+            <span style="color: var(--text-muted);">Yes, I commit to this</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Do you commit to NOT uploading content that violates copyright? *</label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="dev-no-copyright" required style="width: auto;">
+            <span style="color: var(--text-muted);">Yes, I commit to this</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Do you agree to the Terms of Use and Developer Guidelines? *</label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="dev-terms" required style="width: auto;">
+            <span style="color: var(--text-muted);">Yes, I agree</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+          <h3 style="margin-bottom: 15px; font-size: 16px;">Optional Information</h3>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+              <label>Discord Username (if you have a community)</label>
+              <input type="text" id="dev-discord" placeholder="username#1234">
+            </div>
+            <div class="form-group">
+              <label>Country</label>
+              <input type="text" id="dev-country" placeholder="Your country">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+              <label>Primary Programming Language</label>
+              <input type="text" id="dev-language" placeholder="JavaScript, C#, Python, etc.">
+            </div>
+            <div class="form-group">
+              <label>Do you develop alone or as part of a team?</label>
+              <select id="dev-team">
+                <option value="">Select an option</option>
+                <option value="solo">Solo developer</option>
+                <option value="team">Part of a team</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+              <label>How many games do you plan to upload?</label>
+              <input type="text" id="dev-game-count" placeholder="e.g., 3-5 games">
+            </div>
+            <div class="form-group">
+              <label>How did you hear about our site?</label>
+              <input type="text" id="dev-heard-about" placeholder="Friend, social media, search, etc.">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Is there anything else important for us to know?</label>
+            <textarea id="dev-additional" rows="2" placeholder="Any additional information..."></textarea>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+          <div class="form-group">
+            <label>Verification Password *</label>
+            <input type="password" id="dev-password" required placeholder="Enter your account password">
+          </div>
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <i class="fas fa-paper-plane"></i> Submit Application
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  `;
+
+  // Form submission handler
+  document.getElementById('become-developer-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    showLoader(true);
+    
+    try {
+      const formData = {
+        fullName: sanitizeInput(document.getElementById('dev-full-name').value),
+        username: sanitizeInput(document.getElementById('dev-username').value),
+        email: sanitizeInput(document.getElementById('dev-email').value),
+        studioName: sanitizeInput(document.getElementById('dev-studio-name').value),
+        age: sanitizeInput(document.getElementById('dev-age').value),
+        about: sanitizeInput(document.getElementById('dev-about').value),
+        experience: sanitizeInput(document.getElementById('dev-experience').value),
+        tools: sanitizeInput(document.getElementById('dev-tools').value),
+        pastGames: sanitizeInput(document.getElementById('dev-past-games').value),
+        previousGame: sanitizeInput(document.getElementById('dev-previous-game').value),
+        portfolio: sanitizeInput(document.getElementById('dev-portfolio').value),
+        gameTypes: sanitizeInput(document.getElementById('dev-game-types').value),
+        reason: sanitizeInput(document.getElementById('dev-reason').value),
+        plans: sanitizeInput(document.getElementById('dev-plans').value),
+        ownership: sanitizeInput(document.getElementById('dev-ownership').value),
+        noMalware: document.getElementById('dev-no-malware').checked,
+        noCopyright: document.getElementById('dev-no-copyright').checked,
+        terms: document.getElementById('dev-terms').checked,
+        discord: sanitizeInput(document.getElementById('dev-discord').value),
+        country: sanitizeInput(document.getElementById('dev-country').value),
+        language: sanitizeInput(document.getElementById('dev-language').value),
+        team: sanitizeInput(document.getElementById('dev-team').value),
+        gameCount: sanitizeInput(document.getElementById('dev-game-count').value),
+        heardAbout: sanitizeInput(document.getElementById('dev-heard-about').value),
+        additional: sanitizeInput(document.getElementById('dev-additional').value),
+        password: sanitizeInput(document.getElementById('dev-password').value)
+      };
+
+      // Validate password
+      const passwordValidation = validatePasswordStrength(formData.password);
+      if (!passwordValidation.valid) {
+        showToast(passwordValidation.errors[0], "danger");
+        showLoader(false);
+        return;
+      }
+
+      // Submit developer request
+      await submitDeveloperRequest(
+        state.user.uid,
+        formData.username,
+        formData.reason,
+        formData.email
+      );
+
+      showToast("Developer application submitted successfully! We'll review it soon.", "success");
+      navigateTo('#/');
+      
+    } catch (err) {
+      showToast(err.message, "danger");
+    } finally {
+      showLoader(false);
+    }
+  });
 }
 
 // Render: DEVELOPER DOCUMENTATION
