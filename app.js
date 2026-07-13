@@ -2302,12 +2302,56 @@ function openDeveloperRequestModal(requestId, allRequests) {
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
         <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Full Name</label>
+          <div style="font-weight: 500;">${request.fullName || request.username}</div>
+        </div>
+        <div>
           <label style="font-size: 12px; color: var(--text-muted);">Email</label>
           <div style="font-weight: 500;">${request.contactEmail}</div>
         </div>
         <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Studio Name</label>
+          <div style="font-weight: 500;">${request.studioName || 'N/A'}</div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Age Range</label>
+          <div style="font-weight: 500;">${request.age || 'N/A'}</div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Experience</label>
+          <div style="font-weight: 500;">${request.experience || 'N/A'}</div>
+        </div>
+        <div>
           <label style="font-size: 12px; color: var(--text-muted);">Submitted</label>
           <div style="font-weight: 500;">${new Date(request.createdAt).toLocaleString()}</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-muted);">About as Developer</label>
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px;">
+          ${request.about || 'Not provided'}
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-muted);">Tools & Engines</label>
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px;">
+          ${request.tools || 'Not provided'}
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-muted);">Past Games Experience</label>
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px;">
+          ${request.pastGames || 'Not provided'}
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-muted);">Game Types</label>
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px;">
+          ${request.gameTypes || 'Not provided'}
         </div>
       </div>
 
@@ -2317,6 +2361,81 @@ function openDeveloperRequestModal(requestId, allRequests) {
           ${request.reason}
         </div>
       </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-muted);">Plans for Upload</label>
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px;">
+          ${request.plans || 'Not provided'}
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Content Ownership</label>
+          <div style="font-weight: 500;">${request.ownership || 'Not provided'}</div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">No Malware Commitment</label>
+          <div style="font-weight: 500;">${request.noMalware ? '✓ Yes' : '✗ No'}</div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">No Copyright Commitment</label>
+          <div style="font-weight: 500;">${request.noCopyright ? '✓ Yes' : '✗ No'}</div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Terms Agreement</label>
+          <div style="font-weight: 500;">${request.terms ? '✓ Yes' : '✗ No'}</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Discord</label>
+          <div style="font-weight: 500;">${request.discord || 'N/A'}</div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Country</label>
+          <div style="font-weight: 500;">${request.country || 'N/A'}</div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Programming Language</label>
+          <div style="font-weight: 500;">${request.language || 'N/A'}</div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Team vs Solo</label>
+          <div style="font-weight: 500;">${request.team || 'N/A'}</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Planned Game Count</label>
+          <div style="font-weight: 500;">${request.gameCount || 'N/A'}</div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Heard About Us</label>
+          <div style="font-weight: 500;">${request.heardAbout || 'N/A'}</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-muted);">Previous Game Link</label>
+        <div style="font-weight: 500;">${request.previousGame ? `<a href="${request.previousGame}" target="_blank" style="color: #0096ff; text-decoration: underline;">${request.previousGame}</a>` : 'N/A'}</div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-muted);">Portfolio Link</label>
+        <div style="font-weight: 500;">${request.portfolio ? `<a href="${request.portfolio}" target="_blank" style="color: #0096ff; text-decoration: underline;">${request.portfolio}</a>` : 'N/A'}</div>
+      </div>
+
+      ${request.additional ? `
+        <div style="margin-bottom: 20px;">
+          <label style="font-size: 12px; color: var(--text-muted);">Additional Information</label>
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px;">
+            ${request.additional}
+          </div>
+        </div>
+      ` : ''}
 
       ${request.adminSuggestions ? `
         <div style="margin-bottom: 20px;">
