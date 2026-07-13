@@ -46,6 +46,7 @@ import {
   getFirebaseStatus,
   submitBugReport,
   getBugReports,
+  deleteGame,
   firebaseLoaded,
   fallbackMode,
   firebaseFirestore,
@@ -2769,11 +2770,10 @@ async function renderAdmin() {
                   <th>Plays</th>
                   <th>Rating</th>
                   <th>Created</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="admin-approved-games-body">
-                <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading approved games...</td></tr>
+                <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Loading approved games...</td></tr>
               </tbody>
             </table>
           </div>
@@ -3130,65 +3130,84 @@ async function renderAdmin() {
     document.getElementById('stat-approved-games').textContent = approvedGames.length;
 
     if (approvedGames.length === 0) {
-      approvedBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No approved games found.</td></tr>`;
+      approvedBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No approved games found.</td></tr>`;
     } else {
       approvedBody.innerHTML = approvedGames.map(game => {
         const ratingInfo = getGameRatingInfo(game);
         return `
           <tr>
-            <td><strong>${game.name}</strong></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button class="admin-delete-game" data-id="${game.id}" data-name="${game.name}"
+                  style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,51,102,0.1);border:1px solid rgba(255,51,102,0.35);color:var(--danger-color);border-radius:6px;padding:3px 8px;font-size:11px;font-family:var(--font-display);cursor:pointer;transition:all 0.2s;flex-shrink:0;"
+                  onmouseover="this.style.background='rgba(255,51,102,0.25)';this.style.boxShadow='0 0 8px rgba(255,51,102,0.3)'"
+                  onmouseout="this.style.background='rgba(255,51,102,0.1)';this.style.boxShadow='none'">
+                  <i class="fas fa-times"></i> Delete
+                </button>
+                <strong>${game.name}</strong>
+              </div>
+            </td>
             <td>${game.developerName}</td>
             <td>${game.plays || 0}</td>
             <td>${ratingInfo.display}</td>
             <td>${new Date(game.createdAt).toLocaleDateString()}</td>
-            <td>
-              <button class="btn btn-danger admin-delete-game" data-id="${game.id}" style="padding: 4px 8px; font-size: 10px;">
-                <i class="fas fa-trash"></i> Delete
-              </button>
-            </td>
           </tr>
         `;
       }).join('');
 
-      // Bind delete buttons - create deletion request instead of direct delete
+      // Bind delete buttons — styled modal + immediate Firebase deletion
       approvedBody.querySelectorAll('.admin-delete-game').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const gameId = btn.getAttribute('data-id');
-          const game = approvedGames.find(g => g.id === gameId);
-          if (!game) return;
+        btn.addEventListener('click', () => {
+          const gameId   = btn.getAttribute('data-id');
+          const gameName = btn.getAttribute('data-name');
 
-          if (confirm(`Request deletion of "${game.name}"? This will create a deletion request that requires final approval.`)) {
+          const overlay    = document.getElementById('modal-overlay');
+          const modalTitle = document.getElementById('modal-title');
+          const modalBody  = document.getElementById('modal-body');
+
+          modalTitle.innerHTML = `<i class="fas fa-trash" style="color:var(--danger-color);margin-right:8px;"></i> Delete Game`;
+          modalBody.innerHTML = `
+            <div style="text-align:center;padding:10px 0 20px;">
+              <div style="font-size:52px;color:var(--danger-color);margin-bottom:16px;">
+                <i class="fas fa-exclamation-triangle"></i>
+              </div>
+              <p style="font-size:16px;margin-bottom:8px;color:var(--text-main);">
+                Are you sure you want to delete this game?
+              </p>
+              <p style="font-size:15px;color:var(--accent-color);font-family:var(--font-display);font-weight:bold;margin-bottom:14px;">
+                "${gameName}"
+              </p>
+              <p style="font-size:13px;color:var(--text-muted);margin-bottom:26px;">
+                This action is <strong style="color:var(--danger-color);">permanent</strong>. The game will be removed for all players immediately.
+              </p>
+              <div style="display:flex;gap:12px;justify-content:center;">
+                <button id="confirm-delete-game-btn" class="btn btn-danger" style="flex:1;max-width:180px;">
+                  <i class="fas fa-trash"></i> Yes, Delete It
+                </button>
+                <button id="cancel-delete-game-btn" class="btn btn-secondary" style="flex:1;max-width:180px;">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          `;
+          overlay.classList.add('active');
+
+          document.getElementById('cancel-delete-game-btn').onclick = () => overlay.classList.remove('active');
+
+          document.getElementById('confirm-delete-game-btn').onclick = async () => {
+            overlay.classList.remove('active');
             showLoader(true);
             try {
-              // Create deletion request
-              const deletionRequest = {
-                id: 'del_' + Math.random().toString(36).substr(2, 9),
-                gameId: game.id,
-                gameName: game.name,
-                developerUid: game.developerUid,
-                developerName: game.developerName,
-                requestedBy: state.user.uid,
-                requestedByName: state.user.username,
-                createdAt: new Date().toISOString(),
-                status: 'pending'
-              };
-
-              if (firebaseLoaded && !fallbackMode) {
-                await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "game_deletion_requests"), deletionRequest);
-              }
-
-              // Fallback to local storage
-              const deletionRequests = getLocalStorageData('game_deletion_requests') || [];
-              deletionRequests.push(deletionRequest);
-              saveLocalStorageData('game_deletion_requests', deletionRequests);
-
-              showToast('Deletion request created! Go to Games tab to approve.', 'success');
+              await deleteGame(gameId);
+              state.games = state.games.filter(g => g.id !== gameId);
+              showToast(`"${gameName}" has been permanently deleted.`, 'success');
+              renderAdmin();
             } catch (err) {
-              showToast('Failed to create deletion request: ' + err.message, 'danger');
+              showToast('Failed to delete game: ' + err.message, 'danger');
             } finally {
               showLoader(false);
             }
-          }
+          };
         });
       });
     }

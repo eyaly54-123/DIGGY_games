@@ -1457,6 +1457,30 @@ export async function rateGame(gameId, score) {
   }
 }
 
+// --- GAME DELETION ---
+
+export async function deleteGame(gameId) {
+  await firebaseReadyPromise;
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const ref = firebaseFirestore.collection(db, "games");
+      const q   = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
+      const snap = await firebaseFirestore.getDocs(q);
+      if (!snap.empty) {
+        await firebaseFirestore.deleteDoc(firebaseFirestore.doc(db, "games", snap.docs[0].id));
+      }
+    } catch (e) {
+      console.error("Firebase deleteGame failed:", e);
+      throw e;
+    }
+  }
+
+  // Remove from localStorage cache
+  const games = getLocalStorageData('games');
+  saveLocalStorageData('games', games.filter(g => g.id !== gameId));
+}
+
 // --- BUG REPORTS ---
 
 export async function submitBugReport(gameId, gameName, developerUid, reportText, reporterUid, reporterName) {
