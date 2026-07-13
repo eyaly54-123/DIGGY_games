@@ -980,10 +980,6 @@ export async function directPublishGame(gameData) {
     createdAt: new Date().toISOString()
   };
 
-  const games = getLocalStorageData('games');
-  games.push(newGame);
-  saveLocalStorageData('games', games);
-
   // Write to Firebase first
   if (firebaseLoaded && !fallbackMode) {
     try {
