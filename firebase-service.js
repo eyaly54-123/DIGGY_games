@@ -859,7 +859,7 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
         plays: 0,
         ratingSum: 0,
         ratingCount: 0,
-        rating: 5.0,
+        rating: 0,
         createdAt: new Date().toISOString()
       };
 
@@ -963,6 +963,10 @@ export async function directPublishGame(gameData) {
     id: 'game_' + Math.random().toString(36).substr(2, 9),
     ...gameData,
     approved: true,
+    plays: 0,
+    ratingSum: 0,
+    ratingCount: 0,
+    rating: 0,
     createdAt: new Date().toISOString()
   };
 

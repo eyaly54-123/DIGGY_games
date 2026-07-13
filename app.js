@@ -62,12 +62,19 @@ let state = {
 
 // --- RATING HELPERS ---
 function getGameRatingInfo(game) {
-  const rating = parseFloat(game.rating ?? 5.0);
   const count = game.ratingCount ?? 0;
+  // Only show rating if there are actual ratings
+  if (count === 0) {
+    return { rating: 0, count: 0, display: "No ratings" };
+  }
+  const rating = parseFloat(game.rating ?? 5.0);
   return { rating, count, display: rating.toFixed(1) };
 }
 
 function renderStarsDisplay(rating, count, sizeClass = '') {
+  if (rating === "No ratings" || count === 0) {
+    return `<div class="star-rating-display ${sizeClass}"><span class="no-ratings">No ratings yet</span></div>`;
+  }
   const num = parseFloat(rating);
   let stars = '';
   for (let i = 1; i <= 5; i++) {
