@@ -1,19 +1,19 @@
-import { 
-  signUpUser, 
-  logInUser, 
-  logOutUser, 
-  getUserProfile, 
-  updateUserProfile, 
-  changeUserPassword, 
-  submitDeveloperRequest, 
-  getDeveloperRequests, 
-  handleDeveloperRequest, 
-  submitGameRequest, 
-  getDeveloperGameRequests, 
-  getPendingGameRequests, 
-  handleGameRequest, 
-  directPublishGame, 
-  getActiveGames, 
+import {
+  signUpUser,
+  logInUser,
+  logOutUser,
+  getUserProfile,
+  updateUserProfile,
+  changeUserPassword,
+  submitDeveloperRequest,
+  getDeveloperRequests,
+  handleDeveloperRequest,
+  submitGameRequest,
+  getDeveloperGameRequests,
+  getPendingGameRequests,
+  handleGameRequest,
+  directPublishGame,
+  getActiveGames,
   updateAndResubmitGameRequest,
   updateGameDetails,
   recordGamePlay,
@@ -45,7 +45,11 @@ import {
   getPrivilegedAccountRequirements,
   getFirebaseStatus,
   submitBugReport,
-  getBugReports
+  getBugReports,
+  firebaseLoaded,
+  fallbackMode,
+  firebaseFirestore,
+  db
 } from './firebase-service.js';
 
 // --- PLATFORM STATE ---
@@ -1279,7 +1283,7 @@ function createGameCardMarkup(game) {
         ${renderStarsDisplay(rating, count, 'card-size')}
         <p class="game-card-desc">${game.description}</p>
         <div class="game-card-tags">
-          ${game.categories.map(c => `<span class="game-tag">${c}</span>`).join('')}
+          ${game.categories.map(c => `<span class="game-tag">${getCategoryIcon(c)} ${c}</span>`).join('')}
         </div>
         <button class="btn btn-secondary play-game-btn" data-id="${game.id}" style="width: 100%; justify-content: center; padding: 8px;">
           <i class="fas fa-play"></i> Play
@@ -1287,6 +1291,26 @@ function createGameCardMarkup(game) {
       </div>
     </div>
   `;
+}
+
+function getCategoryIcon(category) {
+  const icons = {
+    'RPG': '<i class="fas fa-dragon"></i>',
+    'RETRO': '<i class="fas fa-gamepad"></i>',
+    'MULTIPLAYER': '<i class="fas fa-users"></i>',
+    'ACTION': '<i class="fas fa-bolt"></i>',
+    'PUZZLE': '<i class="fas fa-puzzle-piece"></i>',
+    'ADVENTURE': '<i class="fas fa-compass"></i>',
+    'SPORTS': '<i class="fas fa-futbol"></i>',
+    'STRATEGY': '<i class="fas fa-chess"></i>',
+    'HORROR': '<i class="fas fa-ghost"></i>',
+    'RACING': '<i class="fas fa-flag-checkered"></i>',
+    'SIMULATION': '<i class="fas fa-microchip"></i>',
+    'NEW': '<i class="fas fa-star"></i>',
+    'RECENTLY_UPDATED': '<i class="fas fa-sync-alt"></i>',
+    'ALL': '<i class="fas fa-th-large"></i>'
+  };
+  return icons[category] || '<i class="fas fa-gamepad"></i>';
 }
 
 function bindGameCardEvents(container) {
@@ -1739,7 +1763,7 @@ async function renderDev() {
           <tr data-raw='${JSON.stringify(req)}'>
             <td><img src="${req.logoUrl || ''}" onerror="this.src='https://placehold.co/40x40/12161e/00ff66?text=G'" style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;"></td>
             <td style="font-weight: bold; color: var(--accent-color);">${req.name}</td>
-            <td>${req.categories ? req.categories.join(', ') : ''}</td>
+            <td>${req.categories ? req.categories.map(c => `${getCategoryIcon(c)} ${c}`).join(', ') : ''}</td>
             <td><a href="${req.githubUrl}" target="_blank" style="color: #0096ff; text-decoration: underline; font-size: 12px;">Repo Code</a></td>
             <td>${statusBadge}</td>
             <td style="max-width: 220px; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.4;">${req.adminSuggestions || '<span style="color: var(--text-dark);">None</span>'}</td>
@@ -2297,7 +2321,7 @@ function openGameStatsModal(req) {
         <img src="${req.logoUrl}" onerror="this.src='https://placehold.co/80x80/12161e/00ff66?text=G'" style="width: 70px; height: 70px; border-radius: 10px; object-fit: cover; border: 2px solid var(--accent-color); box-shadow: var(--border-glow);">
         <div>
           <h3 style="font-size: 20px; color: #fff; font-family: var(--font-display);">${req.name}</h3>
-          <span class="doc-badge">${req.categories ? req.categories.join(', ') : ''}</span>
+          <span class="doc-badge">${req.categories ? req.categories.map(c => `${getCategoryIcon(c)} ${c}`).join(', ') : ''}</span>
         </div>
       </div>
 
@@ -3038,7 +3062,7 @@ async function renderAdmin() {
                 </div>
               </div>
             </td>
-            <td>${req.categories ? req.categories.join(', ') : ''}</td>
+            <td>${req.categories ? req.categories.map(c => `${getCategoryIcon(c)} ${c}`).join(', ') : ''}</td>
             <td><a href="${req.githubUrl}" target="_blank" style="color: #0096ff; text-decoration: underline; font-size: 12px;">Source Code</a></td>
             <td>
               ${req.type === 'version_update'
@@ -3554,7 +3578,7 @@ function openGameRequestModal(requestId, allRequests) {
           </div>
           <div style="margin-bottom: 10px;">
             <label style="font-size: 12px; color: var(--text-muted);">Categories</label>
-            <div style="font-weight: 500;">${request.categories ? request.categories.join(', ') : ''}</div>
+            <div style="font-weight: 500;">${request.categories ? request.categories.map(c => `${getCategoryIcon(c)} ${c}`).join(', ') : ''}</div>
           </div>
           <div>
             <label style="font-size: 12px; color: var(--text-muted);">Target Audience</label>
@@ -4785,6 +4809,21 @@ export function renderSettings() {
           <h2 class="settings-card-title">Profile Details</h2>
         </div>
         <div class="modal-body">
+          <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
+            <div style="position: relative;">
+              <img src="${state.user.avatarUrl || 'https://placehold.co/100x100/12161e/00ff66?text=' + state.user.username.charAt(0).toUpperCase()}" 
+                   id="settings-avatar-preview" 
+                   style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-color); box-shadow: var(--border-glow);">
+              <label for="settings-avatar-upload" style="position: absolute; bottom: 0; right: 0; width: 32px; height: 32px; background: var(--accent-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+                <i class="fas fa-camera" style="color: #000; font-size: 14px;"></i>
+              </label>
+              <input type="file" id="settings-avatar-upload" accept="image/*" style="display: none;">
+            </div>
+            <div>
+              <strong style="display: block; margin-bottom: 5px;">Profile Picture</strong>
+              <span style="font-size: 12px; color: var(--text-muted);">Click the camera icon to upload a new avatar</span>
+            </div>
+          </div>
           <div class="form-group">
             <label>Username</label>
             <input type="text" id="settings-username" value="${state.user.username}">
@@ -4801,7 +4840,7 @@ export function renderSettings() {
           </div>
 
           <button class="btn btn-primary" id="save-profile-btn" style="width: 100%; justify-content: center; margin-top: 10px;">
-            Update Username
+            Update Profile
           </button>
         </div>
       </div>
@@ -4928,6 +4967,56 @@ export function renderSettings() {
     } catch (e) {
       showToast(e.message, "danger");
     } finally {
+      showLoader(false);
+    }
+  });
+
+  // Avatar upload binding
+  const avatarUpload = document.getElementById('settings-avatar-upload');
+  const avatarPreview = document.getElementById('settings-avatar-preview');
+
+  avatarUpload.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file', 'danger');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Image size must be less than 2MB', 'danger');
+      return;
+    }
+
+    showLoader(true);
+    try {
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64Image = event.target.result;
+
+        // Update preview
+        avatarPreview.src = base64Image;
+
+        // Save to user profile
+        await updateUserProfile(state.user.uid, { avatarUrl: base64Image });
+        state.user.avatarUrl = base64Image;
+        renderUserBadge();
+
+        showToast('Avatar updated successfully!', 'success');
+        showLoader(false);
+      };
+      reader.onerror = () => {
+        showToast('Failed to read image file', 'danger');
+        showLoader(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error uploading avatar:', err);
+      showToast('Failed to upload avatar: ' + err.message, 'danger');
       showLoader(false);
     }
   });
