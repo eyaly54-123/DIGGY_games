@@ -285,11 +285,12 @@ h1, h2, h3, h4, h5, h6 {
 
 .nav-section-title {
   font-size: 11px;
-  color: var(--text-dark);
+  color: var(--accent-color);
   text-transform: uppercase;
   margin: 20px 0 8px 18px;
   letter-spacing: 2px;
   font-family: var(--font-display);
+  opacity: 0.7;
 }
 
 .sidebar-bottom {
@@ -371,7 +372,8 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 32px;
   font-weight: 900;
   text-transform: uppercase;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  color: var(--accent-color);
+  text-shadow: 0 0 18px var(--accent-glow);
 }
 
 .header-actions {
@@ -518,6 +520,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 20px;
   margin-bottom: 20px;
   text-transform: uppercase;
+  color: var(--accent-color);
   border-left: 4px solid var(--accent-color);
   padding-left: 12px;
   display: flex;
@@ -1461,6 +1464,63 @@ h1, h2, h3, h4, h5, h6 {
 
 @keyframes splash-bar-fill {
   to { width: 100%; }
+}
+
+/* ============================== */
+/* Bug Report Section             */
+/* ============================== */
+.bug-report-section {
+  margin-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 14px;
+}
+
+.bug-report-btn {
+  width: 100%;
+  background: rgba(255, 51, 102, 0.08);
+  border: 1px solid rgba(255, 51, 102, 0.25);
+  color: var(--danger-color);
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-family: var(--font-display);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: var(--transition-smooth);
+}
+
+.bug-report-btn:hover {
+  background: rgba(255, 51, 102, 0.18);
+  box-shadow: 0 0 10px rgba(255, 51, 102, 0.25);
+}
+
+.bug-report-form-wrap {
+  margin-top: 10px;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bug-report-form-wrap.open {
+  display: flex;
+}
+
+.bug-report-form-wrap textarea {
+  font-size: 13px;
+  min-height: 80px;
+  resize: vertical;
+}
+
+.bug-report-thank {
+  color: var(--accent-color);
+  font-size: 13px;
+  font-family: var(--font-display);
+  padding: 10px;
+  background: var(--accent-dim);
+  border-radius: 8px;
+  text-align: center;
 }
 
 /* ============================== */

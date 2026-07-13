@@ -43,7 +43,9 @@ import {
   sendEmailViaResend,
   isPrivilegedRole,
   getPrivilegedAccountRequirements,
-  getFirebaseStatus
+  getFirebaseStatus,
+  submitBugReport,
+  getBugReports
 } from './firebase-service.js';
 
 // --- PLATFORM STATE ---
@@ -59,6 +61,81 @@ let state = {
   recentEmails: [],
   supportActiveThreadId: null
 };
+
+// --- SECURITY LAYER ---
+(function initSecurityLayer() {
+  // Block right-click context menu
+  document.addEventListener('contextmenu', e => e.preventDefault());
+
+  // Block common DevTools keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    const k = e.key.toUpperCase();
+    if (e.key === 'F12') { e.preventDefault(); return false; }
+    if (e.ctrlKey && e.shiftKey && ['I','J','C','K'].includes(k)) { e.preventDefault(); return false; }
+    if (e.ctrlKey && !e.shiftKey && k === 'U') { e.preventDefault(); return false; }
+  }, true);
+
+  // Console security message (similar to Facebook's deterrent)
+  const _warnStyle  = 'color:#ff3366;font-size:28px;font-weight:bold;font-family:monospace;';
+  const _infoStyle  = 'color:#ccc;font-size:14px;font-family:sans-serif;';
+  const _diggStyle  = 'color:#00ff66;font-size:12px;font-family:monospace;';
+  setTimeout(() => {
+    console.log('%c⚠  STOP!', _warnStyle);
+    console.log('%cThis browser feature is for developers. If someone told you to paste something here, they may be trying to steal your account or cheat on the platform.', _infoStyle);
+    console.log('%c[DIGGY Security] Unauthorized access attempts are logged and will result in a permanent account ban.', _diggStyle);
+  }, 1500);
+
+  // DevTools window-size detection (undocked panel heuristic)
+  let _devWarnShown = false;
+  function _checkDevToolsSize() {
+    const threshold = 160;
+    const open = (window.outerWidth - window.innerWidth > threshold) ||
+                 (window.outerHeight - window.innerHeight > threshold);
+    if (open && !_devWarnShown) {
+      _devWarnShown = true;
+      const el = document.createElement('div');
+      el.id = 'diggy-devtools-guard';
+      el.style.cssText = [
+        'position:fixed;inset:0;background:rgba(5,6,8,0.97);',
+        'z-index:99999;display:flex;flex-direction:column;',
+        'align-items:center;justify-content:center;gap:18px;'
+      ].join('');
+      el.innerHTML = `
+        <div style="color:#ff3366;font-size:52px;"><i class="fas fa-shield-alt"></i></div>
+        <div style="color:#ff3366;font-family:Orbitron,sans-serif;font-size:22px;font-weight:bold;letter-spacing:2px;">SECURITY ALERT</div>
+        <div style="color:#aaa;font-size:14px;text-align:center;max-width:320px;line-height:1.6;">
+          Developer Tools are open.<br>
+          Close DevTools to continue playing on DIGGY.
+        </div>
+      `;
+      document.body.appendChild(el);
+    } else if (!open && _devWarnShown) {
+      _devWarnShown = false;
+      const el = document.getElementById('diggy-devtools-guard');
+      if (el) el.remove();
+    }
+  }
+  setInterval(_checkDevToolsSize, 1200);
+})();
+
+// Re-validates the current user's role directly from Firebase before granting
+// access to privileged pages. Returns true if role matches, false if not.
+async function validateRoleFromFirebase(requiredRole) {
+  if (!state.user) return false;
+  try {
+    const freshProfile = await getUserProfile(state.user.uid);
+    if (!freshProfile) return false;
+    // Sync role back in case it changed server-side
+    if (freshProfile.role !== state.user.role) {
+      state.user.role = freshProfile.role;
+    }
+    if (requiredRole === 'admin') return freshProfile.role === 'admin';
+    if (requiredRole === 'developer') return freshProfile.role === 'developer' || freshProfile.role === 'admin';
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // --- RATING HELPERS ---
 function getGameRatingInfo(game) {
@@ -515,6 +592,14 @@ function setupSidebarNavigation() {
       <i class="fas fa-th-large"></i>
       <span>All</span>
     </div>
+    <div class="nav-item" data-category="NEW">
+      <i class="fas fa-star"></i>
+      <span>New</span>
+    </div>
+    <div class="nav-item" data-category="RECENTLY_UPDATED">
+      <i class="fas fa-sync-alt"></i>
+      <span>Recently Updated</span>
+    </div>
     <div class="nav-item" data-category="RPG">
       <i class="fas fa-dragon"></i>
       <span>RPG</span>
@@ -542,6 +627,22 @@ function setupSidebarNavigation() {
     <div class="nav-item" data-category="SPORTS">
       <i class="fas fa-futbol"></i>
       <span>SPORTS</span>
+    </div>
+    <div class="nav-item" data-category="STRATEGY">
+      <i class="fas fa-chess"></i>
+      <span>STRATEGY</span>
+    </div>
+    <div class="nav-item" data-category="HORROR">
+      <i class="fas fa-ghost"></i>
+      <span>HORROR</span>
+    </div>
+    <div class="nav-item" data-category="RACING">
+      <i class="fas fa-flag-checkered"></i>
+      <span>RACING</span>
+    </div>
+    <div class="nav-item" data-category="SIMULATION">
+      <i class="fas fa-microchip"></i>
+      <span>SIMULATION</span>
     </div>
   `;
 
@@ -823,6 +924,8 @@ async function renderHome() {
       <span>Game Categories</span>
       <div class="category-tabs" style="display: flex; gap: 10px; flex-wrap: wrap;">
         <button class="btn btn-secondary active-cat" data-category="ALL" style="padding: 6px 14px; font-size: 11px;">All</button>
+        <button class="btn btn-secondary" data-category="NEW" style="padding: 6px 14px; font-size: 11px;">⭐ New</button>
+        <button class="btn btn-secondary" data-category="RECENTLY_UPDATED" style="padding: 6px 14px; font-size: 11px;">🔄 Updated</button>
         <button class="btn btn-secondary" data-category="RPG" style="padding: 6px 14px; font-size: 11px;">RPG</button>
         <button class="btn btn-secondary" data-category="RETRO" style="padding: 6px 14px; font-size: 11px;">RETRO</button>
         <button class="btn btn-secondary" data-category="MULTIPLAYER" style="padding: 6px 14px; font-size: 11px;">MULTIPLAYER</button>
@@ -830,6 +933,10 @@ async function renderHome() {
         <button class="btn btn-secondary" data-category="PUZZLE" style="padding: 6px 14px; font-size: 11px;">PUZZLE</button>
         <button class="btn btn-secondary" data-category="ADVENTURE" style="padding: 6px 14px; font-size: 11px;">ADVENTURE</button>
         <button class="btn btn-secondary" data-category="SPORTS" style="padding: 6px 14px; font-size: 11px;">SPORTS</button>
+        <button class="btn btn-secondary" data-category="STRATEGY" style="padding: 6px 14px; font-size: 11px;">STRATEGY</button>
+        <button class="btn btn-secondary" data-category="HORROR" style="padding: 6px 14px; font-size: 11px;">HORROR</button>
+        <button class="btn btn-secondary" data-category="RACING" style="padding: 6px 14px; font-size: 11px;">RACING</button>
+        <button class="btn btn-secondary" data-category="SIMULATION" style="padding: 6px 14px; font-size: 11px;">SIMULATION</button>
       </div>
     </div>
 
@@ -948,19 +1055,35 @@ function renderGamesGrid(categoryFilter) {
   const grid = document.getElementById('home-games-grid');
   if (!grid) return;
 
-  console.log("renderGamesGrid called with category:", categoryFilter);
-  console.log("Total games:", state.games.length);
-  console.log("Games with categories:", state.games.filter(g => g.categories && g.categories.length > 0).length);
+  const now = Date.now();
+  const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+  const FORTY_FIVE_DAYS = 45 * 24 * 60 * 60 * 1000;
 
-  const filtered = categoryFilter === 'ALL' 
-    ? state.games 
-    : state.games.filter(g => g.categories && g.categories.includes(categoryFilter));
-
-  console.log("Filtered games count:", filtered.length);
-  console.log("Filtered games:", filtered.map(g => ({ name: g.name, categories: g.categories })));
+  let filtered;
+  if (categoryFilter === 'ALL') {
+    filtered = state.games;
+  } else if (categoryFilter === 'NEW') {
+    filtered = state.games.filter(g => {
+      if (!g.createdAt) return false;
+      return now - new Date(g.createdAt).getTime() <= THIRTY_DAYS;
+    });
+  } else if (categoryFilter === 'RECENTLY_UPDATED') {
+    filtered = state.games.filter(g => {
+      const ts = g.lastUpdatedAt || g.updatedAt;
+      if (!ts) return false;
+      return now - new Date(ts).getTime() <= FORTY_FIVE_DAYS;
+    });
+  } else {
+    filtered = state.games.filter(g => g.categories && g.categories.includes(categoryFilter));
+  }
 
   if (filtered.length === 0) {
-    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">No games in this category right now.</div>`;
+    const emptyMsg = categoryFilter === 'NEW'
+      ? 'No new games in the last 30 days.'
+      : categoryFilter === 'RECENTLY_UPDATED'
+        ? 'No games were updated in the last 45 days.'
+        : 'No games in this category right now.';
+    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">${emptyMsg}</div>`;
     return;
   }
 
@@ -1368,8 +1491,9 @@ async function triggerBiometricLoginFlow() {
 // Render: DEVELOPER DASHBOARD
 async function renderDev() {
   const main = document.getElementById('main-container');
-  
-  if (!state.user || (state.user.role !== 'developer' && state.user.role !== 'admin')) {
+
+  const isAuthorized = state.user && await validateRoleFromFirebase('developer');
+  if (!isAuthorized) {
     main.innerHTML = `
       <div style="text-align: center; padding: 80px 0;">
         <i class="fas fa-lock" style="font-size: 64px; color: var(--danger-color); margin-bottom: 20px;"></i>
@@ -1451,7 +1575,7 @@ async function renderDev() {
             <td>${req.categories ? req.categories.join(', ') : ''}</td>
             <td><a href="${req.githubUrl}" target="_blank" style="color: #0096ff; text-decoration: underline; font-size: 12px;">Repo Code</a></td>
             <td>${statusBadge}</td>
-            <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${req.adminSuggestions || ''}">${req.adminSuggestions || '<span style="color: var(--text-dark);">None</span>'}</td>
+            <td style="max-width: 220px; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.4;">${req.adminSuggestions || '<span style="color: var(--text-dark);">None</span>'}</td>
             <td>${actionBtn}</td>
           </tr>
         `;
@@ -1494,7 +1618,8 @@ async function renderDev() {
 async function renderDevStats() {
   const main = document.getElementById('main-container');
 
-  if (!state.user || (state.user.role !== 'developer' && state.user.role !== 'admin')) {
+  const isAuthorized = state.user && await validateRoleFromFirebase('developer');
+  if (!isAuthorized) {
     main.innerHTML = `
       <div style="text-align: center; padding: 80px 0;">
         <i class="fas fa-lock" style="font-size: 64px; color: var(--danger-color); margin-bottom: 20px;"></i>
@@ -1656,7 +1781,7 @@ function openGameSubmitModal(editData = null) {
         <input type="text" id="game-audience" value="${editData ? editData.targetAudience : ''}" required placeholder="e.g. Kids age 8 and up">
       </div>
       <div class="form-group">
-        <label>Categories (select up to 3)</label>
+        <label>Categories (select up to 4)</label>
         <div class="category-checkbox-grid">
           <label class="category-checkbox-label">
             <input type="checkbox" name="game-cats" value="RPG" ${editData && editData.categories.includes('RPG') ? 'checked' : ''}> RPG
@@ -1679,6 +1804,18 @@ function openGameSubmitModal(editData = null) {
           <label class="category-checkbox-label">
             <input type="checkbox" name="game-cats" value="SPORTS" ${editData && editData.categories.includes('SPORTS') ? 'checked' : ''}> SPORTS
           </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="game-cats" value="STRATEGY" ${editData && editData.categories.includes('STRATEGY') ? 'checked' : ''}> STRATEGY
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="game-cats" value="HORROR" ${editData && editData.categories.includes('HORROR') ? 'checked' : ''}> HORROR
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="game-cats" value="RACING" ${editData && editData.categories.includes('RACING') ? 'checked' : ''}> RACING
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="game-cats" value="SIMULATION" ${editData && editData.categories.includes('SIMULATION') ? 'checked' : ''}> SIMULATION
+          </label>
         </div>
       </div>
       <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 15px;">
@@ -1694,7 +1831,7 @@ function openGameSubmitModal(editData = null) {
   gameCatBoxes.forEach(box => {
     box.addEventListener('change', () => {
       const checkedCount = form.querySelectorAll('input[name="game-cats"]:checked').length;
-      gameCatBoxes.forEach(b => { if (!b.checked) b.disabled = checkedCount >= 3; });
+      gameCatBoxes.forEach(b => { if (!b.checked) b.disabled = checkedCount >= 4; });
     });
   });
 
@@ -1703,11 +1840,11 @@ function openGameSubmitModal(editData = null) {
 
     const checkedBoxes = form.querySelectorAll('input[name="game-cats"]:checked');
     if (checkedBoxes.length === 0) {
-      showToast("You must select at least one category (maximum 3)!", "warning");
+      showToast("You must select at least one category (maximum 4)!", "warning");
       return;
     }
-    if (checkedBoxes.length > 3) {
-      showToast("You can select up to 3 categories only!", "warning");
+    if (checkedBoxes.length > 4) {
+      showToast("You can select up to 4 categories only!", "warning");
       return;
     }
 
@@ -1920,7 +2057,8 @@ function openNewVersionModal(req) {
 async function renderAdmin() {
   const main = document.getElementById('main-container');
 
-  if (!state.user || state.user.role !== 'admin') {
+  const isAdmin = state.user && await validateRoleFromFirebase('admin');
+  if (!isAdmin) {
     main.innerHTML = `
       <div style="text-align: center; padding: 80px 0;">
         <i class="fas fa-radiation-alt" style="font-size: 64px; color: var(--danger-color); margin-bottom: 20px;"></i>
@@ -2899,7 +3037,7 @@ function openAdminReasonModal(requestId, status, type) {
     <form id="admin-reason-form">
       <div class="form-group">
         <label>${labelText}</label>
-        <textarea id="admin-notes" required placeholder="Enter text here..." rows="4"></textarea>
+        <textarea id="admin-notes" required placeholder="Enter text here..." rows="8" style="min-height: 160px; resize: vertical;"></textarea>
       </div>
       <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
         <i class="fas fa-check-double"></i> Perform Action & Send Email
@@ -2972,7 +3110,7 @@ function openAdminDirectUploadModal() {
         <input type="text" id="direct-audience" required placeholder="e.g. Everyone">
       </div>
       <div class="form-group">
-        <label>Categories (select up to 3)</label>
+        <label>Categories (select up to 4)</label>
         <div class="category-checkbox-grid">
           <label class="category-checkbox-label">
             <input type="checkbox" name="direct-cats" value="RPG"> RPG
@@ -2995,6 +3133,18 @@ function openAdminDirectUploadModal() {
           <label class="category-checkbox-label">
             <input type="checkbox" name="direct-cats" value="SPORTS"> SPORTS
           </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="direct-cats" value="STRATEGY"> STRATEGY
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="direct-cats" value="HORROR"> HORROR
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="direct-cats" value="RACING"> RACING
+          </label>
+          <label class="category-checkbox-label">
+            <input type="checkbox" name="direct-cats" value="SIMULATION"> SIMULATION
+          </label>
         </div>
       </div>
       <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 15px;">
@@ -3010,7 +3160,7 @@ function openAdminDirectUploadModal() {
   directCatBoxes.forEach(box => {
     box.addEventListener('change', () => {
       const checkedCount = form.querySelectorAll('input[name="direct-cats"]:checked').length;
-      directCatBoxes.forEach(b => { if (!b.checked) b.disabled = checkedCount >= 3; });
+      directCatBoxes.forEach(b => { if (!b.checked) b.disabled = checkedCount >= 4; });
     });
   });
 
@@ -3022,8 +3172,8 @@ function openAdminDirectUploadModal() {
       showToast("Select at least one category!", "warning");
       return;
     }
-    if (checkedBoxes.length > 3) {
-      showToast("You can select up to 3 categories only!", "warning");
+    if (checkedBoxes.length > 4) {
+      showToast("You can select up to 4 categories only!", "warning");
       return;
     }
     const categories = Array.from(checkedBoxes).map(cb => cb.value);
@@ -3139,6 +3289,15 @@ async function renderGameDetails(gameId) {
           <div id="game-rating-input"></div>
         </div>
 
+        <div class="bug-report-section" id="bug-report-section">
+          <button class="bug-report-btn" id="bug-report-toggle-btn"><i class="fas fa-bug"></i> Report a Bug</button>
+          <div class="bug-report-form-wrap" id="bug-report-form-wrap">
+            <textarea id="bug-report-text" rows="4" placeholder="Describe the bug you encountered..."></textarea>
+            <button class="btn btn-primary" id="bug-report-submit-btn" style="width:100%; margin-top:8px;"><i class="fas fa-paper-plane"></i> Submit Report</button>
+          </div>
+          <div class="bug-report-thank" id="bug-report-thank" style="display:none;"><i class="fas fa-check-circle"></i> Thank you for your report!</div>
+        </div>
+
         <hr style="border: 0; border-top: 1px solid rgba(255, 255, 255, 0.05);">
 
         <div class="game-meta-item">
@@ -3234,6 +3393,48 @@ async function renderGameDetails(gameId) {
       }
     }
   });
+
+  // Bind Bug Report Button
+  const bugToggleBtn = document.getElementById('bug-report-toggle-btn');
+  const bugFormWrap = document.getElementById('bug-report-form-wrap');
+  const bugThank = document.getElementById('bug-report-thank');
+  const bugSubmitBtn = document.getElementById('bug-report-submit-btn');
+
+  if (bugToggleBtn) {
+    bugToggleBtn.addEventListener('click', () => {
+      const isOpen = bugFormWrap.classList.contains('open');
+      bugFormWrap.classList.toggle('open', !isOpen);
+      bugToggleBtn.innerHTML = isOpen
+        ? '<i class="fas fa-bug"></i> Report a Bug'
+        : '<i class="fas fa-times"></i> Cancel';
+    });
+  }
+
+  if (bugSubmitBtn) {
+    bugSubmitBtn.addEventListener('click', async () => {
+      const text = document.getElementById('bug-report-text').value.trim();
+      if (!text) { showToast('Please describe the bug before submitting.', 'warning'); return; }
+      bugSubmitBtn.disabled = true;
+      bugSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+      try {
+        await submitBugReport(
+          game.id,
+          game.name,
+          game.developerUid,
+          text,
+          state.user ? state.user.uid : 'anonymous',
+          state.user ? (state.user.username || state.user.email || 'Player') : 'Guest'
+        );
+        bugFormWrap.classList.remove('open');
+        bugThank.style.display = 'block';
+        bugToggleBtn.style.display = 'none';
+      } catch (err) {
+        showToast('Failed to send report. Please try again.', 'danger');
+        bugSubmitBtn.disabled = false;
+        bugSubmitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
+      }
+    });
+  }
 
   // Bind Enlarge Button
   const enlargeBtn = document.getElementById('enlarge-game-btn');
@@ -5037,7 +5238,8 @@ async function renderBecomeDeveloper() {
 async function renderDevDocs() {
   const main = document.getElementById('main-container');
 
-  if (!state.user || (state.user.role !== 'developer' && state.user.role !== 'admin')) {
+  const isAuthorized = state.user && await validateRoleFromFirebase('developer');
+  if (!isAuthorized) {
     main.innerHTML = `
       <div style="text-align: center; padding: 80px 0;">
         <i class="fas fa-lock" style="font-size: 64px; color: var(--danger-color); margin-bottom: 20px;"></i>

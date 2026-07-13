@@ -833,7 +833,8 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
               gameUrl: requestData.gameUrl,
               githubUrl: requestData.githubUrl,
               version: requestData.version,
-              latestChangelog: requestData.changelog
+              latestChangelog: requestData.changelog,
+              lastUpdatedAt: new Date().toISOString()
             });
           }
         } catch (e) {
@@ -1454,6 +1455,57 @@ export async function rateGame(gameId, score) {
     console.error("Firebase rate game failed:", e);
     throw new Error("Failed to rate game");
   }
+}
+
+// --- BUG REPORTS ---
+
+export async function submitBugReport(gameId, gameName, developerUid, reportText, reporterUid, reporterName) {
+  await firebaseReadyPromise;
+  const report = {
+    id: 'bug_' + Math.random().toString(36).substr(2, 9),
+    gameId,
+    gameName,
+    developerUid,
+    reportText,
+    reporterUid,
+    reporterName,
+    createdAt: new Date().toISOString(),
+    status: 'open'
+  };
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "bug_reports"), report);
+    } catch (e) {
+      console.warn("Firebase bug report submission failed:", e);
+    }
+  }
+
+  // Fallback cache
+  const reports = getLocalStorageData('bug_reports');
+  reports.push(report);
+  saveLocalStorageData('bug_reports', reports);
+
+  return report;
+}
+
+export async function getBugReports() {
+  await firebaseReadyPromise;
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const q = firebaseFirestore.query(
+        firebaseFirestore.collection(db, "bug_reports"),
+        firebaseFirestore.orderBy("createdAt", "desc")
+      );
+      const snap = await firebaseFirestore.getDocs(q);
+      const list = [];
+      snap.forEach(d => { const data = d.data(); list.push({ ...data, id: data.id || d.id }); });
+      return list;
+    } catch (e) {
+      console.warn("Firebase bug reports load failed:", e);
+    }
+  }
+  return getLocalStorageData('bug_reports');
 }
 
 export { auth };
