@@ -1637,6 +1637,7 @@ async function renderDev() {
               ? `<div style="display: flex; gap: 6px;">
                   <button class="btn btn-secondary view-stats-btn" data-id="${req.id}" style="padding: 4px 8px; font-size: 11px; background: rgba(0, 255, 102, 0.05); color: var(--accent-color); border-color: rgba(0,255,102,0.2);"><i class="fas fa-chart-line"></i> Stats</button>
                   <button class="btn btn-primary new-version-btn" data-id="${req.id}" style="padding: 4px 8px; font-size: 11px;"><i class="fas fa-code-branch"></i> New Version</button>
+                  <button class="btn btn-danger request-delete-btn" data-id="${req.id}" style="padding: 4px 8px; font-size: 11px;"><i class="fas fa-trash"></i> Delete</button>
                  </div>`
               : '<span style="color: var(--text-dark); font-size: 12px;">No actions</span>');
 
@@ -1674,6 +1675,48 @@ async function renderDev() {
           const row = btn.closest('tr');
           const data = JSON.parse(row.getAttribute('data-raw'));
           openNewVersionModal(data);
+        });
+      });
+
+      body.querySelectorAll('.request-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const row = btn.closest('tr');
+          const data = JSON.parse(row.getAttribute('data-raw'));
+          if (confirm(`Request deletion of "${data.name}"? This will create a deletion request that requires final admin approval.`)) {
+            showLoader(true);
+            try {
+              // Create deletion request
+              const deletionRequest = {
+                id: 'del_' + Math.random().toString(36).substr(2, 9),
+                gameId: data.id,
+                gameName: data.name,
+                developerUid: state.user.uid,
+                developerName: state.user.username,
+                requestedBy: state.user.uid,
+                requestedByName: state.user.username,
+                createdAt: new Date().toISOString(),
+                status: 'pending'
+              };
+
+              // Save to Firebase
+              if (firebaseLoaded && !fallbackMode) {
+                await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "deletion_requests"), deletionRequest);
+              }
+
+              // Save to local storage
+              const deletionRequests = getLocalStorageData('deletion_requests');
+              deletionRequests.push(deletionRequest);
+              saveLocalStorageData('deletion_requests', deletionRequests);
+
+              showToast('Deletion request submitted successfully! Awaiting admin approval.', 'success');
+              renderDev();
+            } catch (err) {
+              console.error('Error creating deletion request:', err);
+              showToast('Failed to create deletion request: ' + err.message, 'danger');
+            } finally {
+              showLoader(false);
+            }
+          }
         });
       });
     }
