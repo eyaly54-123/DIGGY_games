@@ -1760,85 +1760,315 @@ async function renderAdmin() {
     return;
   }
 
+  // Admin page styles
+  if (!document.getElementById('admin-page-styles')) {
+    const styleTag = document.createElement('style');
+    styleTag.id = 'admin-page-styles';
+    styleTag.textContent = `
+      .admin-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+      }
+      .admin-title h1 {
+        font-size: 28px;
+        margin: 0;
+        color: var(--accent-color);
+      }
+      .admin-title p {
+        color: var(--text-muted);
+        margin: 5px 0 0 0;
+      }
+      .admin-actions {
+        display: flex;
+        gap: 10px;
+      }
+      .admin-tabs {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 25px;
+        background: rgba(255,255,255,0.05);
+        padding: 5px;
+        border-radius: 10px;
+      }
+      .admin-tab {
+        flex: 1;
+        padding: 12px 20px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .admin-tab:hover {
+        background: rgba(255,255,255,0.1);
+        color: var(--text-primary);
+      }
+      .admin-tab.active {
+        background: var(--accent-color);
+        color: #000;
+        font-weight: 600;
+      }
+      .admin-tab i {
+        font-size: 16px;
+      }
+      .admin-tab-content {
+        display: none;
+        animation: fadeIn 0.3s ease;
+      }
+      .admin-tab-content.active {
+        display: block;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .admin-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 25px;
+        border: 1px solid rgba(255,255,255,0.1);
+        margin-bottom: 20px;
+      }
+      .admin-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+      }
+      .admin-card-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      .admin-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
+      }
+      .admin-stat-card {
+        background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.1);
+        text-align: center;
+      }
+      .admin-stat-number {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--accent-color);
+        margin-bottom: 5px;
+      }
+      .admin-stat-label {
+        font-size: 13px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+    `;
+    document.head.appendChild(styleTag);
+  }
+
   main.innerHTML = `
-    <div class="top-header">
-      <div class="page-title-wrap">
-        <h1>System Admin Dashboard (Admin)</h1>
-        <p style="color: var(--text-muted); margin-top: 5px;">Manage developer applications, approve new games, and direct uploads</p>
+    <div class="admin-container">
+      <div class="admin-header">
+        <div class="admin-title">
+          <h1><i class="fas fa-shield-alt"></i> Admin Dashboard</h1>
+          <p>Manage users, games, developer requests, and support tickets</p>
+        </div>
+        <div class="admin-actions">
+          <button class="btn btn-danger" id="clear-local-storage-btn">
+            <i class="fas fa-trash"></i> Clear Storage
+          </button>
+          <button class="btn btn-primary" id="admin-direct-upload-btn">
+            <i class="fas fa-upload"></i> Direct Upload
+          </button>
+        </div>
       </div>
-      <div style="display: flex; gap: 10px;">
-        <button class="btn btn-danger" id="clear-local-storage-btn"><i class="fas fa-trash"></i> Clear Local Storage</button>
-        <button class="btn btn-primary" id="admin-direct-upload-btn"><i class="fas fa-upload"></i> Direct Game Upload</button>
+
+      <!-- Admin Tabs -->
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="tickets">
+          <i class="fas fa-ticket-alt"></i> Support Tickets
+        </button>
+        <button class="admin-tab" data-tab="users">
+          <i class="fas fa-users"></i> Users
+        </button>
+        <button class="admin-tab" data-tab="games">
+          <i class="fas fa-gamepad"></i> Games
+        </button>
+        <button class="admin-tab" data-tab="developers">
+          <i class="fas fa-user-plus"></i> Developer Requests
+        </button>
       </div>
-    </div>
 
-    <!-- Dev Applications Section -->
-    <div class="section-title">Player Applications to Become Developers</div>
-    <div class="data-table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Security Email</th>
-            <th>Request Reason</th>
-            <th>Date</th>
-            <th>Request Status</th>
-            <th>Decision Actions</th>
-          </tr>
-        </thead>
-        <tbody id="admin-dev-requests-body">
-          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading requests...</td></tr>
-        </tbody>
-      </table>
-    </div>
+      <!-- Tickets Tab -->
+      <div class="admin-tab-content active" id="tab-tickets">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <div class="admin-card-title"><i class="fas fa-ticket-alt"></i> Support Chat / Admin Inbox</div>
+          </div>
+          <div class="support-chat-shell">
+            <div class="support-chat-list" id="admin-support-thread-list"></div>
+            <div class="support-chat-content" id="admin-support-thread-content"></div>
+          </div>
+        </div>
+      </div>
 
-    <!-- Game Submissions Section -->
-    <div class="section-title">New Game Submissions for Approval</div>
-    <div class="data-table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Developer</th>
-            <th>Game Details</th>
-            <th>Categories</th>
-            <th>GitHub</th>
-            <th>Target Audience / Description</th>
-            <th>Decision Actions</th>
-          </tr>
-        </thead>
-        <tbody id="admin-game-requests-body">
-          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading games for approval...</td></tr>
-        </tbody>
-      </table>
-    </div>
+      <!-- Users Tab -->
+      <div class="admin-tab-content" id="tab-users">
+        <div class="admin-stats">
+          <div class="admin-stat-card">
+            <div class="admin-stat-number" id="stat-total-users">-</div>
+            <div class="admin-stat-label">Total Users</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-number" id="stat-developers">-</div>
+            <div class="admin-stat-label">Developers</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-number" id="stat-admins">-</div>
+            <div class="admin-stat-label">Admins</div>
+          </div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <div class="admin-card-title"><i class="fas fa-users"></i> User & Role Management</div>
+          </div>
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>UID</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>2FA</th>
+                  <th>Registered</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-list-body">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-    <!-- Support Chat Section -->
-    <div class="section-title">Support Chat / Admin Inbox</div>
-    <div class="support-chat-shell">
-      <div class="support-chat-list" id="admin-support-thread-list"></div>
-      <div class="support-chat-content" id="admin-support-thread-content"></div>
-    </div>
+      <!-- Games Tab -->
+      <div class="admin-tab-content" id="tab-games">
+        <div class="admin-stats">
+          <div class="admin-stat-card">
+            <div class="admin-stat-number" id="stat-total-games">-</div>
+            <div class="admin-stat-label">Total Games</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-number" id="stat-pending-games">-</div>
+            <div class="admin-stat-label">Pending Approval</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-number" id="stat-approved-games">-</div>
+            <div class="admin-stat-label">Approved Games</div>
+          </div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <div class="admin-card-title"><i class="fas fa-gamepad"></i> New Game Submissions for Approval</div>
+          </div>
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Developer</th>
+                  <th>Game Details</th>
+                  <th>Categories</th>
+                  <th>GitHub</th>
+                  <th>Target Audience</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-game-requests-body">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading games...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-    <!-- Users Management Section -->
-    <div class="section-title">User & Role Management (Registered Accounts)</div>
-    <div class="data-table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Unique ID (UID)</th>
-            <th>System Email</th>
-            <th>Role</th>
-            <th>2FA / Biometric</th>
-            <th>Registration Date</th>
-          </tr>
-        </thead>
-        <tbody id="admin-users-list-body">
-          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading user list...</td></tr>
-        </tbody>
-      </table>
+      <!-- Developer Requests Tab -->
+      <div class="admin-tab-content" id="tab-developers">
+        <div class="admin-stats">
+          <div class="admin-stat-card">
+            <div class="admin-stat-number" id="stat-pending-dev-requests">-</div>
+            <div class="admin-stat-label">Pending Requests</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-number" id="stat-approved-dev-requests">-</div>
+            <div class="admin-stat-label">Approved</div>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-number" id="stat-rejected-dev-requests">-</div>
+            <div class="admin-stat-label">Rejected</div>
+          </div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <div class="admin-card-title"><i class="fas fa-user-plus"></i> Player Applications to Become Developers</div>
+          </div>
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Reason</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-dev-requests-body">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading requests...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   `;
+
+  // Tab switching logic
+  document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Remove active class from all tabs
+      document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
+      
+      // Add active class to clicked tab
+      tab.classList.add('active');
+      const tabId = tab.getAttribute('data-tab');
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+    });
+  });
 
   renderAdminSupportChat(state.supportActiveThreadId);
 
