@@ -2104,11 +2104,12 @@ async function renderAdmin() {
         const actionButtons = isPending
           ? `
             <div style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary admin-view-dev" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-eye"></i> View</button>
               <button class="btn btn-primary admin-approve-dev" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-check"></i> Approve</button>
               <button class="btn btn-danger admin-reject-dev" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-times"></i> Reject</button>
             </div>
           `
-          : `<span style="color: var(--text-dark); font-size: 12px;">Closed</span>`;
+          : `<button class="btn btn-secondary admin-view-dev" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-eye"></i> View</button>`;
 
         return `
           <tr>
@@ -2122,6 +2123,9 @@ async function renderAdmin() {
         `;
       }).join('');
 
+      devBody.querySelectorAll('.admin-view-dev').forEach(btn => {
+        btn.addEventListener('click', () => openDeveloperRequestModal(btn.getAttribute('data-id'), devRequests));
+      });
       devBody.querySelectorAll('.admin-approve-dev').forEach(btn => {
         btn.addEventListener('click', () => openAdminReasonModal(btn.getAttribute('data-id'), 'approved', 'dev'));
       });
@@ -2155,12 +2159,13 @@ async function renderAdmin() {
         const actionButtons = isPending
           ? `
             <div style="display: flex; gap: 6px; flex-direction: column;">
+              <button class="btn btn-secondary admin-view-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px; justify-content: center;"><i class="fas fa-eye"></i> View</button>
               <button class="btn btn-primary admin-approve-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px; justify-content: center;"><i class="fas fa-check"></i> Approve & Publish</button>
               <button class="btn btn-secondary admin-improve-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px; justify-content: center; border-color: #0096ff; color: #0096ff;"><i class="fas fa-comment-dots"></i> Needs Improvement</button>
               <button class="btn btn-danger admin-reject-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px; justify-content: center;"><i class="fas fa-times"></i> Reject</button>
             </div>
           `
-          : `<div style="display: flex; flex-direction: column; gap: 4px;">${statusText}<span style="color: var(--text-muted); font-size: 11px;">${req.adminSuggestions || ''}</span></div>`;
+          : `<button class="btn btn-secondary admin-view-game" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-eye"></i> View</button>`;
 
         return `
           <tr>
@@ -2188,6 +2193,9 @@ async function renderAdmin() {
         `;
       }).join('');
 
+      gameBody.querySelectorAll('.admin-view-game').forEach(btn => {
+        btn.addEventListener('click', () => openGameRequestModal(btn.getAttribute('data-id'), gameRequests));
+      });
       gameBody.querySelectorAll('.admin-approve-game').forEach(btn => {
         btn.addEventListener('click', () => openAdminReasonModal(btn.getAttribute('data-id'), 'approved', 'game'));
       });
@@ -2269,6 +2277,244 @@ async function renderAdmin() {
 
 
 // Modal asking Admin to write reason/feedback for developer status or game requests
+function openDeveloperRequestModal(requestId, allRequests) {
+  const overlay = document.getElementById('modal-overlay');
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+
+  const currentIndex = allRequests.findIndex(r => r.id === requestId);
+  const request = allRequests[currentIndex];
+
+  modalTitle.textContent = "Developer Request Details";
+
+  const isPending = request.status === 'pending';
+  let statusBadge = '';
+  if (request.status === 'approved') statusBadge = '<span class="badge badge-approved">Approved</span>';
+  else if (request.status === 'rejected') statusBadge = '<span class="badge badge-rejected">Rejected</span>';
+  else statusBadge = '<span class="badge badge-pending">Pending Review</span>';
+
+  modalBody.innerHTML = `
+    <div style="max-height: 70vh; overflow-y: auto; padding-right: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: var(--accent-color);">${request.username}</h3>
+        ${statusBadge}
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Email</label>
+          <div style="font-weight: 500;">${request.contactEmail}</div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Submitted</label>
+          <div style="font-weight: 500;">${new Date(request.createdAt).toLocaleString()}</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-muted);">Reason for Request</label>
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px;">
+          ${request.reason}
+        </div>
+      </div>
+
+      ${request.adminSuggestions ? `
+        <div style="margin-bottom: 20px;">
+          <label style="font-size: 12px; color: var(--text-muted);">Admin Notes</label>
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px; color: var(--accent-color);">
+            ${request.adminSuggestions}
+          </div>
+        </div>
+      ` : ''}
+
+      <div style="display: flex; gap: 10px; margin-top: 25px;">
+        ${isPending ? `
+          <button class="btn btn-primary" onclick="openAdminReasonModal('${request.id}', 'approved', 'dev')" style="flex: 1;">
+            <i class="fas fa-check"></i> Approve
+          </button>
+          <button class="btn btn-danger" onclick="openAdminReasonModal('${request.id}', 'rejected', 'dev')" style="flex: 1;">
+            <i class="fas fa-times"></i> Reject
+          </button>
+        ` : `
+          <button class="btn btn-secondary" onclick="document.getElementById('modal-overlay').classList.remove('active')" style="flex: 1;">
+            <i class="fas fa-times"></i> Close
+          </button>
+        `}
+      </div>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <button class="btn btn-secondary" onclick="navigateDeveloperRequest(${currentIndex}, -1)" style="padding: 8px 16px;">
+          <i class="fas fa-chevron-left"></i> Previous
+        </button>
+        <span style="color: var(--text-muted); font-size: 14px;">
+          ${currentIndex + 1} / ${allRequests.length}
+        </span>
+        <button class="btn btn-secondary" onclick="navigateDeveloperRequest(${currentIndex}, 1)" style="padding: 8px 16px;">
+          Next <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  `;
+
+  overlay.classList.add('active');
+
+  // Store current requests for navigation
+  window.currentDevRequests = allRequests;
+  window.currentDevIndex = currentIndex;
+}
+
+function navigateDeveloperRequest(currentIndex, direction) {
+  const allRequests = window.currentDevRequests;
+  let newIndex = currentIndex + direction;
+  
+  // Loop navigation
+  if (newIndex < 0) newIndex = allRequests.length - 1;
+  if (newIndex >= allRequests.length) newIndex = 0;
+  
+  const newRequest = allRequests[newIndex];
+  openDeveloperRequestModal(newRequest.id, allRequests);
+}
+
+function openGameRequestModal(requestId, allRequests) {
+  const overlay = document.getElementById('modal-overlay');
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-body');
+
+  const currentIndex = allRequests.findIndex(r => r.id === requestId);
+  const request = allRequests[currentIndex];
+
+  modalTitle.textContent = "Game Request Details";
+
+  const isPending = request.status === 'pending';
+  let statusBadge = '';
+  if (request.status === 'approved') statusBadge = '<span class="badge badge-approved">Approved</span>';
+  else if (request.status === 'rejected') statusBadge = '<span class="badge badge-rejected">Rejected</span>';
+  else if (request.status === 'improvement') statusBadge = '<span class="badge badge-improvement">Needs Improvement</span>';
+  else statusBadge = '<span class="badge badge-pending">Pending Review</span>';
+
+  const typeBadge = request.type === 'version_update'
+    ? `<span class="badge badge-pending" style="background: rgba(112, 214, 255, 0.15); color: #70d6ff; border-color: rgba(112,214,255,0.3);">Version Update (${request.version})</span>`
+    : '';
+
+  modalBody.innerHTML = `
+    <div style="max-height: 70vh; overflow-y: auto; padding-right: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: var(--accent-color);">${request.name} ${typeBadge}</h3>
+        ${statusBadge}
+      </div>
+
+      <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+        <img src="${request.logoUrl}" style="width: 100px; height: 100px; border-radius: 10px; object-fit: cover; border: 2px solid rgba(255,255,255,0.1);">
+        <div style="flex: 1;">
+          <div style="margin-bottom: 10px;">
+            <label style="font-size: 12px; color: var(--text-muted);">Developer</label>
+            <div style="font-weight: 500;">${request.developerName}</div>
+          </div>
+          <div style="margin-bottom: 10px;">
+            <label style="font-size: 12px; color: var(--text-muted);">Categories</label>
+            <div style="font-weight: 500;">${request.categories ? request.categories.join(', ') : ''}</div>
+          </div>
+          <div>
+            <label style="font-size: 12px; color: var(--text-muted);">Target Audience</label>
+            <div style="font-weight: 500;">${request.targetAudience}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-muted);">Description</label>
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px;">
+          ${request.description}
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 12px; color: var(--text-muted);">How to Play</label>
+        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px;">
+          ${request.howToPlay}
+        </div>
+      </div>
+
+      ${request.type === 'version_update' ? `
+        <div style="margin-bottom: 20px;">
+          <label style="font-size: 12px; color: var(--text-muted);">What's New in This Version</label>
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px; color: var(--accent-color);">
+            ${request.changelog}
+          </div>
+        </div>
+      ` : ''}
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">GitHub</label>
+          <div><a href="${request.githubUrl}" target="_blank" style="color: #0096ff; text-decoration: underline;">${request.githubUrl}</a></div>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-muted);">Game URL</label>
+          <div><a href="${request.gameUrl}" target="_blank" style="color: #0096ff; text-decoration: underline;">${request.gameUrl}</a></div>
+        </div>
+      </div>
+
+      ${request.adminSuggestions ? `
+        <div style="margin-bottom: 20px;">
+          <label style="font-size: 12px; color: var(--text-muted);">Admin Notes</label>
+          <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-top: 5px; color: var(--accent-color);">
+            ${request.adminSuggestions}
+          </div>
+        </div>
+      ` : ''}
+
+      <div style="display: flex; gap: 10px; margin-top: 25px;">
+        ${isPending ? `
+          <button class="btn btn-primary" onclick="openAdminReasonModal('${request.id}', 'approved', 'game')" style="flex: 1;">
+            <i class="fas fa-check"></i> Approve
+          </button>
+          <button class="btn btn-secondary" onclick="openAdminReasonModal('${request.id}', 'improvement', 'game')" style="flex: 1; border-color: #0096ff; color: #0096ff;">
+            <i class="fas fa-comment-dots"></i> Improve
+          </button>
+          <button class="btn btn-danger" onclick="openAdminReasonModal('${request.id}', 'rejected', 'game')" style="flex: 1;">
+            <i class="fas fa-times"></i> Reject
+          </button>
+        ` : `
+          <button class="btn btn-secondary" onclick="document.getElementById('modal-overlay').classList.remove('active')" style="flex: 1;">
+            <i class="fas fa-times"></i> Close
+          </button>
+        `}
+      </div>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <button class="btn btn-secondary" onclick="navigateGameRequest(${currentIndex}, -1)" style="padding: 8px 16px;">
+          <i class="fas fa-chevron-left"></i> Previous
+        </button>
+        <span style="color: var(--text-muted); font-size: 14px;">
+          ${currentIndex + 1} / ${allRequests.length}
+        </span>
+        <button class="btn btn-secondary" onclick="navigateGameRequest(${currentIndex}, 1)" style="padding: 8px 16px;">
+          Next <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  `;
+
+  overlay.classList.add('active');
+
+  // Store current requests for navigation
+  window.currentGameRequests = allRequests;
+  window.currentGameIndex = currentIndex;
+}
+
+function navigateGameRequest(currentIndex, direction) {
+  const allRequests = window.currentGameRequests;
+  let newIndex = currentIndex + direction;
+  
+  // Loop navigation
+  if (newIndex < 0) newIndex = allRequests.length - 1;
+  if (newIndex >= allRequests.length) newIndex = 0;
+  
+  const newRequest = allRequests[newIndex];
+  openGameRequestModal(newRequest.id, allRequests);
+}
+
 function openAdminReasonModal(requestId, status, type) {
   const overlay = document.getElementById('modal-overlay');
   const modalTitle = document.getElementById('modal-title');
