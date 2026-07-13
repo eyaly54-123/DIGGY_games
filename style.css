@@ -223,9 +223,11 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: space-between;
   padding: 30px 20px;
   height: 100%;
+  max-height: 100vh;
   flex-shrink: 0;
   box-shadow: 2px 0 20px rgba(0, 0, 0, 0.5);
   z-index: 10;
+  overflow: hidden;
 }
 
 .logo-container {
