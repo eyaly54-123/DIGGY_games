@@ -16,6 +16,11 @@ let db = null;
 let firebaseLoaded = false;
 let fallbackMode = false;
 
+// Promise that resolves once Firebase finishes initialising (success or failure).
+// Awaiting this avoids race conditions where data functions run before the SDK loads.
+let _firebaseReadyResolve;
+const firebaseReadyPromise = new Promise(resolve => { _firebaseReadyResolve = resolve; });
+
 // Export for UI status checking
 export function getFirebaseStatus() {
   if (firebaseLoaded) return { connected: true, mode: 'firebase', message: 'Connected - games shared across all users' };
@@ -46,6 +51,7 @@ async function initFirebase() {
     auth = firebaseAuth.getAuth(app);
     db = firebaseFirestore.getFirestore(app);
     firebaseLoaded = true;
+    _firebaseReadyResolve();
     console.log("Firebase dynamically initialized successfully. Games will be shared across users.");
 
     // Listen to native auth state changes
@@ -67,7 +73,9 @@ async function initFirebase() {
       checkLocalSession();
     });
   } catch (e) {
-    console.warn("Firebase SDK failed to load from CDN. Operating in local-only mode for this session.", e);
+    console.warn("Firebase SDK failed to load from CDN. Operating in local-only fallback mode. Games will NOT be shared between users!", e);
+    fallbackMode = true;
+    _firebaseReadyResolve();
     checkLocalSession();
   }
 }
@@ -228,26 +236,8 @@ function saveLocalStorageData(key, data) {
   localStorage.setItem(`diggy_db_${key}`, JSON.stringify(data));
 }
 
-// Initialize some default data in LocalStorage if not exists
-if (getLocalStorageData('games').length === 0) {
-  // Pre-load default games
-  const defaultGames = [
-    {
-      id: "preset_snake",
-      name: "Neon Snake",
-      description: "The classic retro arcade game! Guide the neon snake to consume glowing particles, but avoid hitting yourself or the boundaries.",
-      logoUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=60",
-      githubUrl: "https://github.com/diggy-games/neon-snake",
-      howToPlay: "Use the arrow keys or WASD to navigate the snake. Eat green glowing particles to grow. The game ends if you collide with the walls or your own tail.",
-      targetAudience: "Everyone (All Ages)",
-      categories: ["RETRO", "RPG"],
-      developerUid: "system",
-      developerName: "DIGGY Core Devs",
-      approved: true
-    }
-  ];
-  saveLocalStorageData('games', defaultGames);
-}
+// Games are stored in Firebase only — no local seeding.
+// LocalStorage is used only as a write-through cache for offline resilience.
 
 // Initialize default users in LocalStorage if empty
 if (getLocalStorageData('users').length === 0) {
@@ -615,15 +605,17 @@ export async function submitDeveloperRequest(uid, username, reason, contactEmail
 }
 
 export async function getDeveloperRequests() {
-  if (firebaseLoaded) {
+  await firebaseReadyPromise;
+
+  if (firebaseLoaded && !fallbackMode) {
     try {
       const q = firebaseFirestore.query(firebaseFirestore.collection(db, "developer_requests"), firebaseFirestore.orderBy("createdAt", "desc"));
       const snap = await firebaseFirestore.getDocs(q);
       const reqs = [];
-      snap.forEach(d => reqs.push({ id: d.id, ...d.data() }));
+      snap.forEach(d => { const data = d.data(); reqs.push({ ...data, id: data.id || d.id }); });
       return reqs;
     } catch (e) {
-      console.warn("Firebase developer requests load failed, loading local:", e);
+      console.warn("Firebase developer requests load failed, loading local cache:", e);
     }
   }
 
@@ -753,18 +745,20 @@ export async function submitGameRequest(gameData) {
 }
 
 export async function getDeveloperGameRequests(developerUid) {
-  if (firebaseLoaded) {
+  await firebaseReadyPromise;
+
+  if (firebaseLoaded && !fallbackMode) {
     try {
       const q = firebaseFirestore.query(
-        firebaseFirestore.collection(db, "game_requests"), 
+        firebaseFirestore.collection(db, "game_requests"),
         firebaseFirestore.where("developerUid", "==", developerUid)
       );
       const snap = await firebaseFirestore.getDocs(q);
       const reqs = [];
-      snap.forEach(d => reqs.push({ id: d.id, ...d.data() }));
+      snap.forEach(d => { const data = d.data(); reqs.push({ ...data, id: data.id || d.id }); });
       return reqs;
     } catch (e) {
-      console.warn("Firebase load dev game requests failed, loading local:", e);
+      console.warn("Firebase load dev game requests failed, loading local cache:", e);
     }
   }
 
@@ -772,15 +766,16 @@ export async function getDeveloperGameRequests(developerUid) {
 }
 
 export async function getPendingGameRequests() {
-  if (firebaseLoaded) {
+  await firebaseReadyPromise;
+
+  if (firebaseLoaded && !fallbackMode) {
     try {
-      const q = firebaseFirestore.query(firebaseFirestore.collection(db, "game_requests"));
-      const snap = await firebaseFirestore.getDocs(q);
+      const snap = await firebaseFirestore.getDocs(firebaseFirestore.collection(db, "game_requests"));
       const reqs = [];
-      snap.forEach(d => reqs.push({ id: d.id, ...d.data() }));
+      snap.forEach(d => { const data = d.data(); reqs.push({ ...data, id: data.id || d.id }); });
       return reqs;
     } catch (e) {
-      console.warn("Firebase load pending game requests failed, loading local:", e);
+      console.warn("Firebase load game requests failed, loading local cache:", e);
     }
   }
 
@@ -989,51 +984,52 @@ export async function directPublishGame(gameData) {
   games.push(newGame);
   saveLocalStorageData('games', games);
 
-  if (firebaseLoaded) {
+  // Write to Firebase first
+  if (firebaseLoaded && !fallbackMode) {
     try {
       await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "games"), newGame);
     } catch (e) {
-      console.warn("Firebase direct publish failed, published locally:", e);
+      console.warn("Firebase direct publish failed, saving locally only:", e);
     }
   }
+
+  // Cache in localStorage
+  const games = getLocalStorageData('games');
+  games.push(newGame);
+  saveLocalStorageData('games', games);
 
   return newGame;
 }
 
 export async function getActiveGames() {
-  if (firebaseLoaded) {
+  // Wait for Firebase to finish loading before deciding the source
+  await firebaseReadyPromise;
+
+  if (firebaseLoaded && !fallbackMode) {
     try {
       const q = firebaseFirestore.query(
-        firebaseFirestore.collection(db, "games"), 
+        firebaseFirestore.collection(db, "games"),
         firebaseFirestore.where("approved", "==", true),
         firebaseFirestore.orderBy("createdAt", "desc")
       );
       const snap = await firebaseFirestore.getDocs(q);
       const list = [];
-      snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+      snap.forEach(d => {
+        const data = d.data();
+        // Use the custom id field if present, otherwise use Firestore doc id
+        list.push({ ...data, id: data.id || d.id });
+      });
+      // Cache in localStorage for offline resilience
+      saveLocalStorageData('games', list);
       console.log("Loaded games from Firebase:", list.length);
       return list;
     } catch (e) {
-      console.warn("Firebase load active games failed, loading local:", e);
+      console.warn("Firebase load active games failed, falling back to cache:", e);
     }
-  } else {
-    console.log("Firebase not loaded or in fallback mode, using local storage only");
   }
 
-  const localGames = getLocalStorageData('games').filter(g => g.approved === true);
-  console.log("Loaded games from local storage:", localGames.length);
-  
-  // Log all game names for debugging
-  console.log("All local games:", localGames.map(g => ({ id: g.id, name: g.name })));
-  
-  // Check for game named "123" and remove it automatically
-  const game123 = localGames.find(g => g.name === '123' || g.name === '123 ');
-  if (game123) {
-    console.warn("Found game named '123' in localStorage - removing it:", game123);
-    removeGameByName('123');
-  }
-  
-  return localGames;
+  // True offline / fallback mode: use localStorage cache only
+  return getLocalStorageData('games').filter(g => g.approved === true);
 }
 
 export function debugLocalStorageGames() {
@@ -1087,33 +1083,37 @@ export function clearAllLocalStorage() {
 }
 
 export async function updateGameDetails(gameId, updatedData) {
-  // Update locally
-  const games = getLocalStorageData('games');
-  const idx = games.findIndex(g => g.id === gameId);
-  
-  if (idx !== -1) {
-    games[idx] = { ...games[idx], ...updatedData };
-    saveLocalStorageData('games', games);
-  } else {
-    throw new Error("Game not found");
-  }
+  await firebaseReadyPromise;
 
-  // Update in Firebase
-  if (firebaseLoaded) {
+  let updatedGame = null;
+
+  if (firebaseLoaded && !fallbackMode) {
     try {
       const ref = firebaseFirestore.collection(db, "games");
       const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
       const snap = await firebaseFirestore.getDocs(q);
       if (!snap.empty) {
-        const docId = snap.docs[0].id;
-        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", docId), updatedData);
+        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", snap.docs[0].id), updatedData);
+        updatedGame = { ...snap.docs[0].data(), ...updatedData };
+      } else {
+        throw new Error("Game not found in Firebase");
       }
     } catch (e) {
-      console.warn("Firebase game update failed, updated locally:", e);
+      console.warn("Firebase game update failed:", e);
     }
   }
 
-  return games[idx];
+  // Sync to localStorage cache
+  const games = getLocalStorageData('games');
+  const idx = games.findIndex(g => g.id === gameId);
+  if (idx !== -1) {
+    games[idx] = { ...games[idx], ...updatedData };
+    saveLocalStorageData('games', games);
+    if (!updatedGame) updatedGame = games[idx];
+  }
+
+  if (!updatedGame) throw new Error("Game not found");
+  return updatedGame;
 }
 
 // --- TWO-FACTOR AUTHENTICATION ---
