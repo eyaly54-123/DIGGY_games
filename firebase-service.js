@@ -586,11 +586,24 @@ export async function submitDeveloperRequest(uid, username, reason, contactEmail
     adminReason: ""
   };
 
-  // Save locally
+  // Check Firebase for existing pending request (cross-device)
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const ref = firebaseFirestore.collection(db, "developer_requests");
+      const q = firebaseFirestore.query(ref, firebaseFirestore.where("uid", "==", uid), firebaseFirestore.where("status", "==", "pending"));
+      const snap = await firebaseFirestore.getDocs(q);
+      if (!snap.empty) throw new Error("You already have a pending request to become a developer!");
+    } catch (e) {
+      if (e.message.includes("pending request")) throw e;
+      console.warn("Firebase duplicate check failed, checking locally:", e);
+    }
+  }
+
+  // Also check localStorage as fallback
   const requests = getLocalStorageData('developer_requests');
-  const exists = requests.some(r => r.uid === uid && r.status === 'pending');
-  if (exists) throw new Error("You already have a pending request to become a developer!");
-  
+  const localExists = requests.some(r => r.uid === uid && r.status === 'pending');
+  if (localExists) throw new Error("You already have a pending request to become a developer!");
+
   requests.push(requestDoc);
   saveLocalStorageData('developer_requests', requests);
 
@@ -622,51 +635,81 @@ export async function getDeveloperRequests() {
 }
 
 export async function handleDeveloperRequest(requestId, status, adminReason) {
-  console.log("handleDeveloperRequest called with:", { requestId, status, adminReason });
-  
-  // Update locally
-  const requests = getLocalStorageData('developer_requests');
-  console.log("Current requests:", requests);
-  
-  const idx = requests.findIndex(r => r.id === requestId || r.uid === requestId); // fallback matching
-  console.log("Found request at index:", idx);
-  
   let requestData = null;
+  let fbDocId = null;
 
-  if (idx !== -1) {
-    requests[idx].status = status;
-    requests[idx].adminReason = adminReason;
-    requestData = requests[idx];
-    saveLocalStorageData('developer_requests', requests);
-
-    if (status === 'approved') {
-      await updateUserProfile(requests[idx].uid, { role: 'developer' });
+  // 1. Try Firebase first (cross-device authoritative source)
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const ref = firebaseFirestore.collection(db, "developer_requests");
+      // Search by custom id field stored in the document
+      const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", requestId));
+      const snap = await firebaseFirestore.getDocs(q);
+      if (!snap.empty) {
+        fbDocId = snap.docs[0].id;
+        requestData = { ...snap.docs[0].data() };
+      } else {
+        // Fallback: treat requestId as uid (old behaviour)
+        const q2 = firebaseFirestore.query(ref, firebaseFirestore.where("uid", "==", requestId));
+        const snap2 = await firebaseFirestore.getDocs(q2);
+        if (!snap2.empty) {
+          fbDocId = snap2.docs[0].id;
+          requestData = { ...snap2.docs[0].data() };
+        }
+      }
+    } catch (e) {
+      console.warn("Firebase developer request lookup failed:", e);
     }
-  } else {
-    console.error("Request not found with id:", requestId);
+  }
+
+  // 2. Also check localStorage (covers offline / fallback mode)
+  if (!requestData) {
+    const requests = getLocalStorageData('developer_requests');
+    const idx = requests.findIndex(r => r.id === requestId || r.uid === requestId);
+    if (idx !== -1) {
+      requestData = requests[idx];
+    }
+  }
+
+  if (!requestData) {
     throw new Error("Request not found - could not locate developer request with ID: " + requestId);
   }
 
-  if (firebaseLoaded && !fallbackMode && requestData) {
+  // 3. Update Firebase
+  if (firebaseLoaded && !fallbackMode) {
     try {
-      // Find matching remote request by requestId or uid
       const ref = firebaseFirestore.collection(db, "developer_requests");
-      const q = firebaseFirestore.query(ref, firebaseFirestore.where("uid", "==", requestData.uid));
-      const snap = await firebaseFirestore.getDocs(q);
-      if (!snap.empty) {
-        const docId = snap.docs[0].id;
-        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "developer_requests", docId), { status, adminReason });
+      const targetDocId = fbDocId || (await (async () => {
+        const q = firebaseFirestore.query(ref, firebaseFirestore.where("uid", "==", requestData.uid));
+        const snap = await firebaseFirestore.getDocs(q);
+        return snap.empty ? null : snap.docs[0].id;
+      })());
+      if (targetDocId) {
+        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "developer_requests", targetDocId), { status, adminReason });
       }
     } catch (e) {
-      console.warn("Firebase developer request handle failed, processed locally:", e);
+      console.warn("Firebase developer request update failed:", e);
     }
   }
 
-  if (requestData) {
-    await sendStatusEmail(requestData.contactEmail, requestData.username, 'Developer Role Application', status, adminReason);
-    return requestData;
+  // 4. Sync update to localStorage
+  const requests = getLocalStorageData('developer_requests');
+  const idx = requests.findIndex(r => r.id === requestData.id || r.uid === requestData.uid);
+  if (idx !== -1) {
+    requests[idx].status = status;
+    requests[idx].adminReason = adminReason;
+  } else {
+    requests.push({ ...requestData, status, adminReason });
   }
-  throw new Error("Request not found");
+  saveLocalStorageData('developer_requests', requests);
+
+  // 5. Promote user role if approved (updateUserProfile handles Firebase directly by UID)
+  if (status === 'approved') {
+    await updateUserProfile(requestData.uid, { role: 'developer' });
+  }
+
+  await sendStatusEmail(requestData.contactEmail, requestData.username, 'Developer Role Application', status, adminReason);
+  return { ...requestData, status, adminReason };
 }
 
 // --- GAME SUBMISSION WORKFLOW ---
@@ -681,9 +724,21 @@ export async function submitGameRequest(gameData) {
     adminSuggestions: ""
   };
 
+  // Check Firebase for rejected status (cross-device)
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const ref = firebaseFirestore.collection(db, "game_requests");
+      const q = firebaseFirestore.query(ref, firebaseFirestore.where("githubUrl", "==", gameData.githubUrl), firebaseFirestore.where("status", "==", "rejected"));
+      const snap = await firebaseFirestore.getDocs(q);
+      if (!snap.empty) throw new Error("This game repository was previously rejected and cannot be resubmitted.");
+    } catch (e) {
+      if (e.message.includes("rejected")) throw e;
+      console.warn("Firebase rejection check failed, checking locally:", e);
+    }
+  }
+
+  // Also check localStorage as fallback
   const requests = getLocalStorageData('game_requests');
-  
-  // Check rejected check
   const rejected = requests.some(r => r.githubUrl === gameData.githubUrl && r.status === 'rejected');
   if (rejected) throw new Error("This game repository was previously rejected and cannot be resubmitted.");
 
@@ -737,166 +792,192 @@ export async function getPendingGameRequests() {
 }
 
 export async function handleGameRequest(requestId, status, adminSuggestions = "", requesterUid = null, requesterRole = null) {
-  const requests = getLocalStorageData('game_requests');
-  const idx = requests.findIndex(r => r.id === requestId);
   let requestData = null;
+  let fbRequestDocId = null;
 
-  if (idx !== -1) {
-    requests[idx].status = status;
-    requests[idx].adminSuggestions = adminSuggestions;
-    requestData = requests[idx];
-    saveLocalStorageData('game_requests', requests);
-
-    if (status === 'approved') {
-      const games = getLocalStorageData('games');
-      
-      if (requestData.type === 'version_update') {
-        const gameIdx = games.findIndex(g => g.id === requestData.parentGameId);
-        if (gameIdx !== -1) {
-          games[gameIdx].gameUrl = requestData.gameUrl;
-          games[gameIdx].githubUrl = requestData.githubUrl;
-          games[gameIdx].version = requestData.version;
-          games[gameIdx].latestChangelog = requestData.changelog;
-          saveLocalStorageData('games', games);
-        }
-      } else {
-        const gameId = 'game_' + Math.random().toString(36).substr(2, 9);
-        const gamePayload = {
-          id: gameId,
-          name: requestData.name,
-          description: requestData.description,
-          logoUrl: requestData.logoUrl,
-          githubUrl: requestData.githubUrl,
-          gameUrl: requestData.gameUrl || '',
-          howToPlay: requestData.howToPlay,
-          targetAudience: requestData.targetAudience,
-          categories: requestData.categories,
-          developerUid: requestData.developerUid,
-          developerName: requestData.developerName,
-          approved: true,
-          plays: 0,
-          ratingSum: 0,
-          ratingCount: 0,
-          rating: 5.0,
-          createdAt: new Date().toISOString()
-        };
-        
-        games.push(gamePayload);
-        saveLocalStorageData('games', games);
-
-        requests[idx].gameId = gameId;
-        saveLocalStorageData('game_requests', requests);
-      }
-    }
-  }
-
-  if (firebaseLoaded && !fallbackMode && requestData) {
+  // 1. Fetch from Firebase first (cross-device authoritative source)
+  if (firebaseLoaded && !fallbackMode) {
     try {
       const ref = firebaseFirestore.collection(db, "game_requests");
       const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", requestId));
       const snap = await firebaseFirestore.getDocs(q);
       if (!snap.empty) {
-        const docId = snap.docs[0].id;
-        
-        let updatePayload = { status, adminSuggestions };
-        
-        if (status === 'approved') {
-          if (requestData.type === 'version_update') {
-            const gameRef = firebaseFirestore.collection(db, "games");
-            const qGame = firebaseFirestore.query(gameRef, firebaseFirestore.where("id", "==", requestData.parentGameId));
-            const gameSnap = await firebaseFirestore.getDocs(qGame);
-            if (!gameSnap.empty) {
-              const gameDocId = gameSnap.docs[0].id;
-              await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", gameDocId), {
-                gameUrl: requestData.gameUrl,
-                githubUrl: requestData.githubUrl,
-                version: requestData.version,
-                latestChangelog: requestData.changelog
-              });
-            }
-          } else {
-            const newGameId = 'game_' + Math.random().toString(36).substr(2, 9);
-            console.log(`[Firebase] Adding new approved game: ${newGameId} - ${requestData.name}`);
-            await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "games"), {
-              id: newGameId,
-              name: requestData.name,
-              description: requestData.description,
-              logoUrl: requestData.logoUrl,
-              githubUrl: requestData.githubUrl,
-              gameUrl: requestData.gameUrl || '',
-              howToPlay: requestData.howToPlay,
-              targetAudience: requestData.targetAudience,
-              categories: requestData.categories,
-              developerUid: requestData.developerUid,
-              developerName: requestData.developerName,
-              approved: true,
-              plays: 0,
-              ratingSum: 0,
-              ratingCount: 0,
-              rating: 5.0,
-              createdAt: new Date().toISOString()
-            });
-            console.log(`[Firebase] Game added successfully: ${newGameId}`);
-            updatePayload.gameId = newGameId;
-          }
-        }
-        
-        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "game_requests", docId), updatePayload);
-        console.log(`[Firebase] Game request updated in Firebase: ${requestId}`);
+        fbRequestDocId = snap.docs[0].id;
+        requestData = { ...snap.docs[0].data() };
       }
     } catch (e) {
-      console.error("Firebase game request handling error:", e);
-      console.error("Game was saved locally but NOT synced to Firebase. Other users won't see it.");
-      console.error("Please check Firebase connection status.");
+      console.warn("Firebase game request lookup failed:", e);
     }
-  } else {
-    console.warn("Firebase not connected - game saved locally only. Other users won't see it.");
   }
 
-  if (requestData) {
-    try {
-      const devProfile = await getUserProfile(requestData.developerUid);
-      const emailToUse = devProfile.supportEmail || devProfile.twoFactorEmail || devProfile.email || 'diggy-games@outlook.com';
-      await sendStatusEmail(emailToUse, requestData.developerName, `Game Submission: ${requestData.name}`, status, adminSuggestions);
-    } catch (err) {
-      console.warn("Failed to send notification email:", err);
+  // 2. Fall back to localStorage if Firebase lookup failed or offline
+  if (!requestData) {
+    const requests = getLocalStorageData('game_requests');
+    const idx = requests.findIndex(r => r.id === requestId);
+    if (idx !== -1) {
+      requestData = requests[idx];
     }
-    return requestData;
   }
-  throw new Error("Request not found");
+
+  if (!requestData) {
+    throw new Error("Request not found - ID: " + requestId);
+  }
+
+  // 3. Apply status update to requestData
+  requestData.status = status;
+  requestData.adminSuggestions = adminSuggestions;
+
+  // 4. Handle approval: create the game in Firebase (single source of truth)
+  let newGameId = null;
+  if (status === 'approved') {
+    if (requestData.type === 'version_update') {
+      // Update existing game in Firebase
+      if (firebaseLoaded && !fallbackMode) {
+        try {
+          const gameRef = firebaseFirestore.collection(db, "games");
+          const qGame = firebaseFirestore.query(gameRef, firebaseFirestore.where("id", "==", requestData.parentGameId));
+          const gameSnap = await firebaseFirestore.getDocs(qGame);
+          if (!gameSnap.empty) {
+            await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", gameSnap.docs[0].id), {
+              gameUrl: requestData.gameUrl,
+              githubUrl: requestData.githubUrl,
+              version: requestData.version,
+              latestChangelog: requestData.changelog
+            });
+          }
+        } catch (e) {
+          console.error("Firebase version update failed:", e);
+        }
+      }
+      // Sync to localStorage
+      const games = getLocalStorageData('games');
+      const gameIdx = games.findIndex(g => g.id === requestData.parentGameId);
+      if (gameIdx !== -1) {
+        games[gameIdx].gameUrl = requestData.gameUrl;
+        games[gameIdx].githubUrl = requestData.githubUrl;
+        games[gameIdx].version = requestData.version;
+        games[gameIdx].latestChangelog = requestData.changelog;
+        saveLocalStorageData('games', games);
+      }
+    } else {
+      // Create new game — one ID, written to Firebase first
+      newGameId = 'game_' + Math.random().toString(36).substr(2, 9);
+      const gamePayload = {
+        id: newGameId,
+        name: requestData.name,
+        description: requestData.description,
+        logoUrl: requestData.logoUrl,
+        githubUrl: requestData.githubUrl,
+        gameUrl: requestData.gameUrl || '',
+        howToPlay: requestData.howToPlay,
+        targetAudience: requestData.targetAudience,
+        categories: requestData.categories,
+        developerUid: requestData.developerUid,
+        developerName: requestData.developerName,
+        approved: true,
+        plays: 0,
+        ratingSum: 0,
+        ratingCount: 0,
+        rating: 5.0,
+        createdAt: new Date().toISOString()
+      };
+
+      if (firebaseLoaded && !fallbackMode) {
+        try {
+          await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "games"), gamePayload);
+        } catch (e) {
+          console.error("Firebase game creation failed:", e);
+        }
+      }
+
+      // Sync to localStorage
+      const games = getLocalStorageData('games');
+      games.push(gamePayload);
+      saveLocalStorageData('games', games);
+
+      requestData.gameId = newGameId;
+    }
+  }
+
+  // 5. Update game request status in Firebase
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const updatePayload = { status, adminSuggestions, ...(newGameId ? { gameId: newGameId } : {}) };
+      if (fbRequestDocId) {
+        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "game_requests", fbRequestDocId), updatePayload);
+      } else {
+        // Try to find the doc if we only got requestData from localStorage
+        const ref = firebaseFirestore.collection(db, "game_requests");
+        const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", requestId));
+        const snap = await firebaseFirestore.getDocs(q);
+        if (!snap.empty) {
+          await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "game_requests", snap.docs[0].id), updatePayload);
+        }
+      }
+    } catch (e) {
+      console.error("Firebase game request status update failed:", e);
+    }
+  }
+
+  // 6. Sync request status to localStorage
+  const requests = getLocalStorageData('game_requests');
+  const localIdx = requests.findIndex(r => r.id === requestId);
+  if (localIdx !== -1) {
+    requests[localIdx].status = status;
+    requests[localIdx].adminSuggestions = adminSuggestions;
+    if (newGameId) requests[localIdx].gameId = newGameId;
+  } else {
+    requests.push({ ...requestData });
+  }
+  saveLocalStorageData('game_requests', requests);
+
+  // 7. Send notification email to developer
+  try {
+    const devProfile = await getUserProfile(requestData.developerUid);
+    const emailToUse = devProfile.supportEmail || devProfile.twoFactorEmail || devProfile.email || 'diggy-games@outlook.com';
+    await sendStatusEmail(emailToUse, requestData.developerName, `Game Submission: ${requestData.name}`, status, adminSuggestions);
+  } catch (err) {
+    console.warn("Failed to send notification email:", err);
+  }
+
+  return requestData;
 }
 
 export async function updateAndResubmitGameRequest(requestId, updatedData) {
-  const requests = getLocalStorageData('game_requests');
-  const idx = requests.findIndex(r => r.id === requestId);
-  if (idx !== -1) {
-    requests[idx] = {
-      ...requests[idx],
-      ...updatedData,
-      status: 'pending',
-      adminSuggestions: "",
-      createdAt: new Date().toISOString()
-    };
-    saveLocalStorageData('game_requests', requests);
-  }
+  const resubPayload = {
+    ...updatedData,
+    status: 'pending',
+    adminSuggestions: "",
+    createdAt: new Date().toISOString()
+  };
 
+  // Update Firebase by custom id field (cross-device)
   if (firebaseLoaded && !fallbackMode) {
     try {
       const ref = firebaseFirestore.collection(db, "game_requests");
-      const q = firebaseFirestore.query(ref, firebaseFirestore.where("githubUrl", "==", updatedData.githubUrl));
+      const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", requestId));
       const snap = await firebaseFirestore.getDocs(q);
       if (!snap.empty) {
-        const docId = snap.docs[0].id;
-        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "game_requests", docId), {
-          ...updatedData,
-          status: 'pending',
-          adminSuggestions: "",
-          createdAt: new Date().toISOString()
-        });
+        await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "game_requests", snap.docs[0].id), resubPayload);
+      } else {
+        // Fallback: search by githubUrl
+        const q2 = firebaseFirestore.query(ref, firebaseFirestore.where("githubUrl", "==", updatedData.githubUrl));
+        const snap2 = await firebaseFirestore.getDocs(q2);
+        if (!snap2.empty) {
+          await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "game_requests", snap2.docs[0].id), resubPayload);
+        }
       }
     } catch (e) {
-      console.warn("Firebase resubmission failed, updated locally:", e);
+      console.warn("Firebase resubmission failed, updating locally:", e);
     }
+  }
+
+  // Sync to localStorage
+  const requests = getLocalStorageData('game_requests');
+  const idx = requests.findIndex(r => r.id === requestId);
+  if (idx !== -1) {
+    requests[idx] = { ...requests[idx], ...resubPayload };
+    saveLocalStorageData('game_requests', requests);
   }
 }
 
