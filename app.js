@@ -2969,7 +2969,7 @@ async function renderAdmin() {
                 saveLocalStorageData('bug_reports', reports);
               }
               showToast('Bug report marked as resolved', 'success');
-              await fetchBugReports();
+              await getBugReports();
               renderAdmin();
             } catch (err) {
               console.error('Error updating bug report:', err);
