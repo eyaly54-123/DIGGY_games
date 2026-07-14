@@ -1392,35 +1392,6 @@ async function sendStatusEmail(to, name, type, status, reason) {
   await sendEmailViaResend(to, `DIGGY - Update on your ${type} request`, html);
 }
 
-export async function recordGamePlay(gameId) {
-  if (!firebaseLoaded || fallbackMode) {
-    throw new Error("Firebase is not available. Cannot record game play.");
-  }
-
-  try {
-    const ref = firebaseFirestore.collection(db, "games");
-    const q = firebaseFirestore.query(ref, firebaseFirestore.where("id", "==", gameId));
-    const snap = await firebaseFirestore.getDocs(q);
-    if (!snap.empty) {
-      const docId = snap.docs[0].id;
-      const currentPlays = snap.docs[0].data().plays || 0;
-      await firebaseFirestore.updateDoc(firebaseFirestore.doc(db, "games", docId), {
-        plays: currentPlays + 1
-      });
-    } else {
-      const docRef = firebaseFirestore.doc(db, "games", gameId);
-      const docSnap = await firebaseFirestore.getDoc(docRef);
-      if (docSnap.exists()) {
-        const currentPlays = docSnap.data().plays || 0;
-        await firebaseFirestore.updateDoc(docRef, { plays: currentPlays + 1 });
-      }
-    }
-  } catch (e) {
-    console.error("Firebase record gameplay failed:", e);
-    throw new Error("Failed to record game play");
-  }
-}
-
 export async function submitGameVersionRequest(gameId, versionData) {
   const requestId = 'greq_' + Math.random().toString(36).substr(2, 9);
   const requestDoc = {
