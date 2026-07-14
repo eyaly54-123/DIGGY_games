@@ -53,7 +53,6 @@ import {
   getAdminLogs,
   sendDevChatMessage,
   getDevChatMessages,
-  recordGamePlay,
   updateGamePlayDuration,
   getGamePlayStatistics,
   firebaseLoaded,
