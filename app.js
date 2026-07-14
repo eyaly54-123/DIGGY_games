@@ -3382,6 +3382,7 @@ async function renderAdmin() {
         const actionButtons = report.status === 'open'
           ? `
             <div style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary admin-view-bug" data-id="${report.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-eye"></i> Details</button>
               <button class="btn btn-primary admin-resolve-bug" data-id="${report.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-check"></i> Resolve</button>
             </div>
           `
@@ -3398,6 +3399,62 @@ async function renderAdmin() {
           </tr>
         `;
       }).join('');
+
+      bugBody.querySelectorAll('.admin-view-bug').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const reportId = btn.getAttribute('data-id');
+          const report = bugReports.find(r => r.id === reportId);
+          if (report) {
+            const overlay = document.getElementById('modal-overlay');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            
+            modalTitle.innerHTML = `<i class="fas fa-bug" style="color:var(--accent-color);margin-right:8px;"></i> Bug Report Details`;
+            modalBody.innerHTML = `
+              <div style="text-align:center;padding:10px 0 20px;">
+                <h3 style="color:var(--accent-color);font-size:20px;margin-bottom:5px;">${report.gameName}</h3>
+                <p style="color:var(--text-muted);font-size:14px;">Bug Report #${report.id}</p>
+              </div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Reporter</label>
+                  <div style="font-weight:500;">${report.reporterName}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Status</label>
+                  <div style="font-weight:500;">${report.status === 'open' ? '<span class="badge badge-pending">Open</span>' : '<span class="badge badge-approved">Resolved</span>'}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Reported At</label>
+                  <div style="font-weight:500;">${new Date(report.createdAt).toLocaleString()}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Developer UID</label>
+                  <div style="font-weight:500;">${report.developerUid || 'N/A'}</div>
+                </div>
+              </div>
+              
+              <div style="margin-bottom:20px;">
+                <label style="font-size:12px;color:var(--text-muted);">Bug Description</label>
+                <div style="background:rgba(255,255,255,0.05);padding:15px;border-radius:8px;margin-top:5px;color:var(--text-main);">${report.reportText}</div>
+              </div>
+              
+              ${report.status === 'open' ? `
+                <button id="close-bug-modal-btn" class="btn btn-secondary" style="width:100%;padding:12px;">Close</button>
+              ` : `
+                <div style="margin-bottom:20px;">
+                  <label style="font-size:12px;color:var(--text-muted);">Resolved At</label>
+                  <div style="font-weight:500;">${report.resolvedAt ? new Date(report.resolvedAt).toLocaleString() : 'N/A'}</div>
+                </div>
+                <button id="close-bug-modal-btn" class="btn btn-secondary" style="width:100%;padding:12px;">Close</button>
+              `}
+            `;
+            overlay.classList.add('active');
+            document.getElementById('close-bug-modal-btn').onclick = () => overlay.classList.remove('active');
+          }
+        });
+      });
 
       bugBody.querySelectorAll('.admin-resolve-bug').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -3818,6 +3875,7 @@ async function renderAdmin() {
             <td>${new Date(req.createdAt).toLocaleDateString()}</td>
             <td>
               <div style="display: flex; gap: 8px;">
+                <button class="btn btn-secondary admin-view-deletion" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-eye"></i> Details</button>
                 <button class="btn btn-primary admin-approve-deletion" data-id="${req.id}" data-game-id="${req.gameId}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-check"></i> Approve</button>
                 <button class="btn btn-danger admin-reject-deletion" data-id="${req.id}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-times"></i> Reject</button>
               </div>
@@ -3825,6 +3883,54 @@ async function renderAdmin() {
           </tr>
         `;
       }).join('');
+
+      deletionBody.querySelectorAll('.admin-view-deletion').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const requestId = btn.getAttribute('data-id');
+          const req = deletionRequests.find(r => r.id === requestId);
+          if (req) {
+            const overlay = document.getElementById('modal-overlay');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            
+            modalTitle.innerHTML = `<i class="fas fa-trash" style="color:var(--danger-color);margin-right:8px;"></i> Deletion Request Details`;
+            modalBody.innerHTML = `
+              <div style="text-align:center;padding:10px 0 20px;">
+                <h3 style="color:var(--accent-color);font-size:20px;margin-bottom:5px;">${req.gameName}</h3>
+                <p style="color:var(--text-muted);font-size:14px;">Deletion Request #${req.id}</p>
+              </div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Developer</label>
+                  <div style="font-weight:500;">${req.developerName}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Requested By</label>
+                  <div style="font-weight:500;">${req.requestedByName}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Game ID</label>
+                  <div style="font-weight:500;">${req.gameId || 'N/A'}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Requested At</label>
+                  <div style="font-weight:500;">${new Date(req.createdAt).toLocaleString()}</div>
+                </div>
+              </div>
+              
+              <div style="margin-bottom:20px;">
+                <label style="font-size:12px;color:var(--text-muted);">Status</label>
+                <div style="font-weight:500;">${req.status === 'pending' ? '<span class="badge badge-pending">Pending</span>' : req.status === 'approved' ? '<span class="badge badge-approved">Approved</span>' : '<span class="badge badge-rejected">Rejected</span>'}</div>
+              </div>
+              
+              <button id="close-deletion-modal-btn" class="btn btn-secondary" style="width:100%;padding:12px;">Close</button>
+            `;
+            overlay.classList.add('active');
+            document.getElementById('close-deletion-modal-btn').onclick = () => overlay.classList.remove('active');
+          }
+        });
+      });
 
       deletionBody.querySelectorAll('.admin-approve-deletion').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -3919,9 +4025,64 @@ async function renderAdmin() {
               </div>
             </td>
             <td>${registrationDate}</td>
+            <td>
+              <button class="btn btn-secondary admin-view-user" data-uid="${u.uid}" style="padding: 4px 8px; font-size: 10px;"><i class="fas fa-eye"></i> Details</button>
+            </td>
           </tr>
         `;
       }).join('');
+
+      // Bind view user buttons
+      usersBody.querySelectorAll('.admin-view-user').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const uid = btn.getAttribute('data-uid');
+          const user = allUsers.find(u => u.uid === uid);
+          if (user) {
+            const overlay = document.getElementById('modal-overlay');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            
+            modalTitle.innerHTML = `<i class="fas fa-user" style="color:var(--accent-color);margin-right:8px;"></i> User Details`;
+            modalBody.innerHTML = `
+              <div style="text-align:center;padding:10px 0 20px;">
+                <h3 style="color:var(--accent-color);font-size:20px;margin-bottom:5px;">${user.username}</h3>
+                <p style="color:var(--text-muted);font-size:14px;">User ID: ${user.uid}</p>
+              </div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Email</label>
+                  <div style="font-weight:500;">${user.email || 'N/A'}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Role</label>
+                  <div style="font-weight:500;">${user.role ? user.role.toUpperCase() : 'PLAYER'}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Registered At</label>
+                  <div style="font-weight:500;">${user.createdAt ? new Date(user.createdAt).toLocaleString() : 'N/A'}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">2FA Enabled</label>
+                  <div style="font-weight:500;">${user.twoFactorEnabled ? '<span style="color:var(--accent-color);">Yes</span>' : '<span style="color:var(--text-muted);">No</span>'}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Biometrics Enabled</label>
+                  <div style="font-weight:500;">${user.biometricsEnabled ? '<span style="color:var(--accent-color);">Yes</span>' : '<span style="color:var(--text-muted);">No</span>'}</div>
+                </div>
+                <div>
+                  <label style="font-size:12px;color:var(--text-muted);">Support Email</label>
+                  <div style="font-weight:500;">${user.supportEmail || 'N/A'}</div>
+                </div>
+              </div>
+              
+              <button id="close-user-modal-btn" class="btn btn-secondary" style="width:100%;padding:12px;">Close</button>
+            `;
+            overlay.classList.add('active');
+            document.getElementById('close-user-modal-btn').onclick = () => overlay.classList.remove('active');
+          }
+        });
+      });
 
       // Bind role change selectors
       usersBody.querySelectorAll('.admin-role-select').forEach(select => {
