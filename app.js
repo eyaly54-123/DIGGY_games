@@ -2037,13 +2037,13 @@ async function renderDev() {
 
               // Save to Firebase
               if (firebaseLoaded && !fallbackMode) {
-                await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "deletion_requests"), deletionRequest);
+                await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "game_deletion_requests"), deletionRequest);
               }
 
               // Save to local storage
-              const deletionRequests = getLocalStorageData('deletion_requests');
+              const deletionRequests = getLocalStorageData('game_deletion_requests') || [];
               deletionRequests.push(deletionRequest);
-              saveLocalStorageData('deletion_requests', deletionRequests);
+              saveLocalStorageData('game_deletion_requests', deletionRequests);
 
               showToast('Deletion request submitted successfully! Awaiting admin approval.', 'success');
               renderDev();

@@ -870,6 +870,18 @@ export async function handleGameRequest(requestId, status, adminSuggestions = ""
           console.error("Firebase version update failed:", e);
         }
       }
+      
+      // Update existing game in localStorage
+      const games = getLocalStorageData('games');
+      const gameIdx = games.findIndex(g => g.id === requestData.parentGameId);
+      if (gameIdx !== -1) {
+        games[gameIdx].gameUrl = requestData.gameUrl;
+        games[gameIdx].githubUrl = requestData.githubUrl;
+        games[gameIdx].version = requestData.version;
+        games[gameIdx].latestChangelog = requestData.changelog;
+        games[gameIdx].lastUpdatedAt = new Date().toISOString();
+        saveLocalStorageData('games', games);
+      }
     } else {
       // Create new game — one ID, written to Firebase first
       newGameId = 'game_' + Math.random().toString(36).substr(2, 9);
