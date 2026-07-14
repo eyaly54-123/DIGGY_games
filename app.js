@@ -47,6 +47,15 @@ import {
   submitBugReport,
   getBugReports,
   deleteGame,
+  containsProfanity,
+  filterProfanity,
+  logAdminAction,
+  getAdminLogs,
+  sendDevChatMessage,
+  getDevChatMessages,
+  recordGamePlay,
+  updateGamePlayDuration,
+  getGamePlayStatistics,
   firebaseLoaded,
   fallbackMode,
   firebaseFirestore,
@@ -437,7 +446,12 @@ function renderAdminSupportChat(selectedThreadId = null) {
         <div class="support-thread-title">${activeThread.subject}</div>
         <div class="support-thread-meta">${activeThread.name} · ${activeThread.email}</div>
       </div>
-      <div class="support-thread-meta">Created: ${new Date(activeThread.createdAt).toLocaleString()}</div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <div class="support-thread-meta">Created: ${new Date(activeThread.createdAt).toLocaleString()}</div>
+        <button id="close-ticket-btn" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;">
+          <i class="fas fa-times"></i> Close Ticket
+        </button>
+      </div>
     </div>
     <div class="support-thread-messages">${messagesHtml}</div>
     <form id="support-reply-form" class="support-reply-form">
@@ -467,6 +481,34 @@ function renderAdminSupportChat(selectedThreadId = null) {
       await sendEmailViaResend(customerEmail, `DIGGY - New support reply`, html);
       showToast('Reply sent to the user!', 'success');
       renderAdminSupportChat(activeThread.id);
+    });
+  }
+
+  // Close ticket button
+  const closeBtn = document.getElementById('close-ticket-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to close this support ticket?')) {
+        try {
+          // Mark thread as closed
+          const threads = getSupportThreads();
+          const threadIndex = threads.findIndex(t => t.id === activeThread.id);
+          if (threadIndex !== -1) {
+            threads[threadIndex].status = 'closed';
+            threads[threadIndex].closedAt = new Date().toISOString();
+            threads[threadIndex].closedBy = state.user?.username || 'Admin';
+            saveLocalStorageData('support_threads', threads);
+          }
+
+          // Log the action
+          await logAdminAction('SUPPORT_TICKET_CLOSED', `Closed support ticket: ${activeThread.subject}`, state.user?.uid, state.user?.username);
+
+          showToast('Support ticket closed successfully!', 'success');
+          renderAdminSupportChat(null); // Refresh to show updated list
+        } catch (err) {
+          showToast('Failed to close ticket: ' + err.message, 'danger');
+        }
+      }
     });
   }
 }
@@ -1109,7 +1151,19 @@ async function renderHome() {
         <h1>DIGGY Game Hall</h1>
         <p style="color: var(--text-muted); margin-top: 5px;">The top games spot for kids and developers</p>
       </div>
-      <div class="header-actions" id="header-auth-actions"></div>
+      <div class="header-actions" style="display: flex; gap: 15px; align-items: center;">
+        <div style="position: relative;">
+          <input type="text" id="game-search-input" placeholder="🔍 Search games..." 
+            style="padding: 10px 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); 
+            background: var(--bg-card); color: var(--text-main); font-size: 14px; width: 250px;
+            transition: all 0.3s ease;">
+          <div id="search-results" style="position: absolute; top: 100%; left: 0; right: 0; 
+            background: var(--bg-card); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; 
+            margin-top: 5px; max-height: 300px; overflow-y: auto; display: none; z-index: 100;">
+          </div>
+        </div>
+        <div id="header-auth-actions"></div>
+      </div>
     </div>
 
     <!-- Promo Carousel Banner -->
@@ -1166,6 +1220,75 @@ async function renderHome() {
   
   renderGamesGrid('ALL');
   renderRecentlyPlayedAndFavorites();
+
+  // Game search functionality
+  const searchInput = document.getElementById('game-search-input');
+  const searchResults = document.getElementById('search-results');
+
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase();
+    
+    if (query.length < 2) {
+      searchResults.style.display = 'none';
+      return;
+    }
+
+    const filteredGames = state.games.filter(game => 
+      game.name.toLowerCase().includes(query) ||
+      (game.howToPlay && game.howToPlay.toLowerCase().includes(query)) ||
+      (game.categories && game.categories.some(cat => cat.toLowerCase().includes(query)))
+    ).slice(0, 10);
+
+    if (filteredGames.length === 0) {
+      searchResults.innerHTML = `
+        <div style="padding: 15px; color: var(--text-muted); text-align: center;">
+          No games found matching "${query}"
+        </div>
+      `;
+    } else {
+      searchResults.innerHTML = filteredGames.map(game => `
+        <div class="search-result-item" data-game-id="${game.id}" 
+          style="padding: 12px 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); 
+          transition: background 0.2s ease; display: flex; align-items: center; gap: 12px;">
+          <img src="${game.logoUrl}" onerror="this.src='https://placehold.co/40x40/12161e/00ff66?text=G'" 
+            style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
+          <div style="flex: 1;">
+            <div style="font-weight: bold; color: var(--accent-color);">${game.name}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${game.howToPlay || 'No description'}</div>
+          </div>
+        </div>
+      `).join('');
+
+      // Add click handlers to search results
+      searchResults.querySelectorAll('.search-result-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const gameId = item.getAttribute('data-game-id');
+          navigateTo(`#/game/${gameId}`);
+          searchResults.style.display = 'none';
+          searchInput.value = '';
+        });
+      });
+
+      // Add hover effects
+      searchResults.querySelectorAll('.search-result-item').forEach(item => {
+        item.addEventListener('mouseenter', () => {
+          item.style.background = 'rgba(255,255,255,0.05)';
+        });
+        item.addEventListener('mouseleave', () => {
+          item.style.background = 'transparent';
+        });
+      });
+    }
+
+    searchResults.style.display = 'block';
+  });
+
+  // Close search results when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+      searchResults.style.display = 'none';
+    }
+  });
 
   // Category tab filter listeners
   const tabs = main.querySelectorAll('.category-tabs button');
@@ -1489,6 +1612,12 @@ function renderLogin() {
     const username = sanitizeInput(document.getElementById('auth-username').value);
     const password = document.getElementById('auth-password').value;
 
+    // Check for profanity in username
+    if (containsProfanity(username)) {
+      showToast('Username contains inappropriate language. Please choose a different username.', 'danger');
+      return;
+    }
+
     // Validate username
     const usernameValidation = validateUsername(username);
     if (!usernameValidation.valid) {
@@ -1727,7 +1856,56 @@ async function renderDev() {
         <h1>Developer Dashboard</h1>
         <p style="color: var(--text-muted); margin-top: 5px;">Manage your games and submit upload requests to the site</p>
       </div>
-      <button class="btn btn-primary" id="dev-submit-game-btn"><i class="fas fa-plus"></i> Submit New Game</button>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <div style="text-align: right; margin-right: 15px;">
+          <div style="font-size: 11px; color: var(--text-muted);">Your Games</div>
+          <div style="font-size: 16px; color: var(--accent-color); font-weight: bold;" id="dev-total-games">-</div>
+        </div>
+        <button class="btn btn-primary" id="dev-submit-game-btn"><i class="fas fa-plus"></i> Submit New Game</button>
+      </div>
+    </div>
+
+    <!-- Quick Stats Overview -->
+    <div class="admin-stats" style="margin-bottom: 25px;">
+      <div class="admin-stat-card">
+        <div class="admin-stat-number" id="dev-total-plays">-</div>
+        <div class="admin-stat-label">Total Plays</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-number" id="dev-avg-rating">-</div>
+        <div class="admin-stat-label">Avg Rating</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-number" id="dev-approved-games">-</div>
+        <div class="admin-stat-label">Approved Games</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-number" id="dev-pending-games">-</div>
+        <div class="admin-stat-label">Pending Games</div>
+      </div>
+    </div>
+
+    <!-- Developer-Admin Chat Section -->
+    <div class="admin-card" style="margin-bottom: 25px;">
+      <div class="admin-card-header">
+        <div class="admin-card-title"><i class="fas fa-comments"></i> Developer-Admin Chat</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Communicate directly with DIGGY admins</div>
+      </div>
+      <div style="display: flex; gap: 15px; height: 350px;">
+        <div style="flex: 1; display: flex; flex-direction: column; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+          <div id="dev-chat-messages" style="flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="text-align: center; color: var(--text-muted); padding: 20px;">Loading chat...</div>
+          </div>
+          <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 10px;">
+            <input type="text" id="dev-chat-input" placeholder="Type a message to admins..." 
+              style="flex: 1; padding: 10px 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); 
+              background: var(--bg-card); color: var(--text-main); font-size: 14px;">
+            <button id="dev-chat-send-btn" class="btn btn-primary" style="padding: 10px 20px;">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="section-title">Your Games and Requests</div>
@@ -1757,6 +1935,22 @@ async function renderDev() {
   try {
     const requests = await getDeveloperGameRequests(state.user.uid);
     const body = document.getElementById('dev-games-list-body');
+    
+    // Populate quick stats
+    const myGames = state.games.filter(g => g.developerUid === state.user.uid);
+    const totalPlays = myGames.reduce((sum, g) => sum + (g.plays || 0), 0);
+    const gamesWithRatings = myGames.filter(g => g.rating && g.rating > 0);
+    const avgRating = gamesWithRatings.length > 0 
+      ? (gamesWithRatings.reduce((sum, g) => sum + g.rating, 0) / gamesWithRatings.length).toFixed(1)
+      : '0.0';
+    const approvedGames = myGames.filter(g => g.approved).length;
+    const pendingGames = requests.filter(r => r.status === 'pending').length;
+    
+    document.getElementById('dev-total-games').textContent = myGames.length;
+    document.getElementById('dev-total-plays').textContent = totalPlays;
+    document.getElementById('dev-avg-rating').textContent = avgRating;
+    document.getElementById('dev-approved-games').textContent = approvedGames;
+    document.getElementById('dev-pending-games').textContent = pendingGames;
     
     if (requests.length === 0) {
       body.innerHTML = `
@@ -1867,6 +2061,93 @@ async function renderDev() {
   } catch (err) {
     showToast("Error loading developer games: " + err.message, "danger");
   }
+
+  // Load developer-admin chat
+  async function loadDevChat() {
+    try {
+      const messages = await getDevChatMessages(50);
+      const chatContainer = document.getElementById('dev-chat-messages');
+      
+      if (messages.length === 0) {
+        chatContainer.innerHTML = `
+          <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+            <i class="fas fa-comments" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+            No messages yet. Start a conversation with the admins!
+          </div>
+        `;
+        return;
+      }
+
+      chatContainer.innerHTML = messages.map(msg => {
+        const isAdmin = msg.senderRole === 'admin';
+        const isCurrentUser = msg.senderUid === state.user.uid;
+        
+        return `
+          <div style="display: flex; ${isCurrentUser ? 'justify-content: flex-end;' : 'justify-content: flex-start;'}">
+            <div style="max-width: 70%; padding: 10px 15px; border-radius: 12px; 
+              ${isAdmin ? 'background: linear-gradient(135deg, rgba(255, 102, 102, 0.2), rgba(255, 102, 102, 0.1)); border: 1px solid rgba(255, 102, 102, 0.3);' : 
+                isCurrentUser ? 'background: linear-gradient(135deg, rgba(0, 255, 102, 0.2), rgba(0, 255, 102, 0.1)); border: 1px solid rgba(0, 255, 102, 0.3);' : 
+                'background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);'}">
+              <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 5px;">
+                ${isAdmin ? '<i class="fas fa-shield-alt"></i> Admin' : msg.senderName} 
+                <span style="opacity: 0.6;">• ${new Date(msg.timestamp).toLocaleTimeString()}</span>
+              </div>
+              <div style="font-size: 14px; color: var(--text-main);">${msg.message}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Scroll to bottom
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    } catch (err) {
+      console.error('Failed to load dev chat:', err);
+      document.getElementById('dev-chat-messages').innerHTML = `
+        <div style="text-align: center; color: var(--danger-color); padding: 20px;">
+          Failed to load chat: ${err.message}
+        </div>
+      `;
+    }
+  }
+
+  // Send message handler
+  const chatInput = document.getElementById('dev-chat-input');
+  const chatSendBtn = document.getElementById('dev-chat-send-btn');
+
+  async function sendMessage() {
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    // Check for profanity
+    if (containsProfanity(message)) {
+      showToast('Please remove inappropriate language from your message.', 'danger');
+      return;
+    }
+
+    try {
+      await sendDevChatMessage(state.user.uid, state.user.username, 'developer', message);
+      chatInput.value = '';
+      await loadDevChat();
+    } catch (err) {
+      showToast('Failed to send message: ' + err.message, 'danger');
+    }
+  }
+
+  chatSendBtn.addEventListener('click', sendMessage);
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  // Initial chat load
+  loadDevChat();
+
+  // Auto-refresh chat every 10 seconds
+  const chatInterval = setInterval(loadDevChat, 10000);
+
+  // Clean up interval when leaving page
+  window.addEventListener('hashchange', () => {
+    clearInterval(chatInterval);
+  });
 
   document.getElementById('dev-submit-game-btn').addEventListener('click', () => {
     openGameSubmitModal();
@@ -2042,30 +2323,55 @@ async function renderDevStats() {
       ? (gamesWithRatings.reduce((sum, g) => sum + g.rating, 0) / gamesWithRatings.length).toFixed(1)
       : '0.0';
 
-    // For returning players and conversion rate, we don't have tracking data yet
-    // Show "N/A" instead of fake data
-    const returningPlayers = 'N/A';
-    const conversionRate = 'N/A';
-    const avgPlaytime = 'N/A';
+    // Get real play statistics
+    const playStats = await getGamePlayStatistics(null, state.user.uid);
+    
+    // Calculate playtime distribution
+    const playtimeUnder1m = playStats.filter(p => p.playDuration < 60).length;
+    const playtime1_5m = playStats.filter(p => p.playDuration >= 60 && p.playDuration < 300).length;
+    const playtime5_15m = playStats.filter(p => p.playDuration >= 300 && p.playDuration < 900).length;
+    const playtime15_30m = playStats.filter(p => p.playDuration >= 900 && p.playDuration < 1800).length;
+    const playtime30_60m = playStats.filter(p => p.playDuration >= 1800 && p.playDuration < 3600).length;
+    const playtimeOver1h = playStats.filter(p => p.playDuration >= 3600).length;
 
-    // Hide playtime and device distribution since we don't have real tracking data
-    document.getElementById('stat-time-under-1m').textContent = 'N/A';
-    document.getElementById('stat-time-1-5m').textContent = 'N/A';
-    document.getElementById('stat-time-5-15m').textContent = 'N/A';
-    document.getElementById('stat-time-15-30m').textContent = 'N/A';
-    document.getElementById('stat-time-30-60m').textContent = 'N/A';
-    document.getElementById('stat-time-over-1h').textContent = 'N/A';
+    // Calculate device distribution
+    const deviceDesktop = playStats.filter(p => p.device === 'desktop').length;
+    const deviceMobile = playStats.filter(p => p.device === 'mobile').length;
+    const deviceTablet = playStats.filter(p => p.device === 'tablet').length;
 
-    document.getElementById('stat-device-desktop').textContent = 'N/A';
-    document.getElementById('stat-device-mobile').textContent = 'N/A';
-    document.getElementById('stat-device-tablet').textContent = 'N/A';
+    // Calculate average playtime
+    const totalDuration = playStats.reduce((sum, p) => sum + (p.playDuration || 0), 0);
+    const avgPlaytime = playStats.length > 0 ? Math.round(totalDuration / playStats.length) : 0;
+    const avgPlaytimeDisplay = avgPlaytime > 0 ? `${Math.floor(avgPlaytime / 60)}m ${avgPlaytime % 60}s` : 'N/A';
+
+    // Calculate returning players (users who played more than once)
+    const userPlayCounts = {};
+    playStats.forEach(p => {
+      userPlayCounts[p.userId] = (userPlayCounts[p.userId] || 0) + 1;
+    });
+    const returningPlayers = Object.values(userPlayCounts).filter(count => count > 1).length;
+
+    // Calculate conversion rate (players who rated games / total players)
+    const ratedGames = myGames.filter(g => g.rating && g.rating > 0).length;
+    const conversionRate = uniquePlayers > 0 ? Math.round((ratedGames / uniquePlayers) * 100) + '%' : '0%';
+
+    document.getElementById('stat-time-under-1m').textContent = playtimeUnder1m;
+    document.getElementById('stat-time-1-5m').textContent = playtime1_5m;
+    document.getElementById('stat-time-5-15m').textContent = playtime5_15m;
+    document.getElementById('stat-time-15-30m').textContent = playtime15_30m;
+    document.getElementById('stat-time-30-60m').textContent = playtime30_60m;
+    document.getElementById('stat-time-over-1h').textContent = playtimeOver1h;
+
+    document.getElementById('stat-device-desktop').textContent = deviceDesktop;
+    document.getElementById('stat-device-mobile').textContent = deviceMobile;
+    document.getElementById('stat-device-tablet').textContent = deviceTablet;
 
     document.getElementById('stat-total-plays').textContent = totalPlays;
     document.getElementById('stat-unique-players').textContent = uniquePlayers;
     document.getElementById('stat-avg-rating').textContent = realAvgRating;
     document.getElementById('stat-total-games').textContent = myGames.length;
     document.getElementById('stat-approved-games').textContent = approvedGames;
-    document.getElementById('stat-avg-playtime').textContent = avgPlaytime;
+    document.getElementById('stat-avg-playtime').textContent = avgPlaytimeDisplay;
     document.getElementById('stat-returning-players').textContent = returningPlayers;
     document.getElementById('stat-conversion-rate').textContent = conversionRate;
 
@@ -2258,11 +2564,21 @@ function openGameSubmitModal(editData = null) {
     const categories = Array.from(checkedBoxes).map(cb => cb.value);
     const gameType = gameTypeSelect.value;
 
+    const gameName = document.getElementById('game-name').value;
+    const gameDesc = document.getElementById('game-desc').value;
+    const gameHow = document.getElementById('game-how').value;
+
+    // Check for profanity
+    if (containsProfanity(gameName) || containsProfanity(gameDesc) || containsProfanity(gameHow)) {
+      showToast('Please remove inappropriate language from your game details.', 'danger');
+      return;
+    }
+
     let gameData = {
-      name: document.getElementById('game-name').value,
-      description: document.getElementById('game-desc').value,
+      name: gameName,
+      description: gameDesc,
       logoUrl: document.getElementById('game-logo').value,
-      howToPlay: document.getElementById('game-how').value,
+      howToPlay: gameHow,
       targetAudience: document.getElementById('game-audience').value,
       categories: categories,
       developerUid: state.user.uid,
@@ -2637,12 +2953,44 @@ async function renderAdmin() {
           <p>Manage users, games, developer requests, and support tickets</p>
         </div>
         <div class="admin-actions">
+          <div style="display: flex; align-items: center; gap: 15px; margin-right: 15px;">
+            <div style="text-align: right;">
+              <div style="font-size: 11px; color: var(--text-muted);">System Status</div>
+              <div style="font-size: 13px; color: var(--accent-color); font-weight: bold;">
+                <i class="fas fa-circle" style="font-size: 8px; color: #00ff66;"></i> Online
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 11px; color: var(--text-muted);">Total Games</div>
+              <div style="font-size: 13px; color: var(--text-main); font-weight: bold;">${state.games.length}</div>
+            </div>
+          </div>
           <button class="btn btn-danger" id="clear-local-storage-btn">
             <i class="fas fa-trash"></i> Clear Storage
           </button>
           <button class="btn btn-primary" id="admin-direct-upload-btn">
             <i class="fas fa-upload"></i> Direct Upload
           </button>
+        </div>
+      </div>
+
+      <!-- Quick Stats Overview -->
+      <div class="admin-stats" style="margin-bottom: 25px;">
+        <div class="admin-stat-card">
+          <div class="admin-stat-number" id="quick-total-games">-</div>
+          <div class="admin-stat-label">Total Games</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-number" id="quick-total-users">-</div>
+          <div class="admin-stat-label">Total Users</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-number" id="quick-pending-requests">-</div>
+          <div class="admin-stat-label">Pending Requests</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-number" id="quick-open-tickets">-</div>
+          <div class="admin-stat-label">Open Tickets</div>
         </div>
       </div>
 
@@ -2662,6 +3010,9 @@ async function renderAdmin() {
         </button>
         <button class="admin-tab" data-tab="bug-reports">
           <i class="fas fa-bug"></i> Bug Reports
+        </button>
+        <button class="admin-tab" data-tab="logs">
+          <i class="fas fa-history"></i> Activity Logs
         </button>
       </div>
 
@@ -2880,6 +3231,33 @@ async function renderAdmin() {
           </div>
         </div>
       </div>
+
+      <!-- Activity Logs Tab -->
+      <div class="admin-tab-content" id="tab-logs">
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <div class="admin-card-title"><i class="fas fa-history"></i> Admin Activity Logs</div>
+            <button class="btn btn-secondary" id="refresh-logs-btn" style="padding: 6px 12px; font-size: 12px;">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+          </div>
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Action</th>
+                  <th>Details</th>
+                  <th>User</th>
+                </tr>
+              </thead>
+              <tbody id="admin-logs-body">
+                <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Loading logs...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 
@@ -2912,6 +3290,74 @@ async function renderAdmin() {
   document.getElementById('admin-direct-upload-btn').addEventListener('click', () => {
     openAdminDirectUploadModal();
   });
+
+  // Populate quick stats
+  async function loadQuickStats() {
+    try {
+      const users = getLocalStorageData('users') || [];
+      const devRequests = await getDeveloperRequests();
+      const supportThreads = getSupportThreads();
+      
+      document.getElementById('quick-total-games').textContent = state.games.length;
+      document.getElementById('quick-total-users').textContent = users.length;
+      document.getElementById('quick-pending-requests').textContent = devRequests.filter(r => r.status === 'pending').length;
+      document.getElementById('quick-open-tickets').textContent = supportThreads.filter(t => t.status !== 'closed').length;
+    } catch (err) {
+      console.error('Failed to load quick stats:', err);
+    }
+  }
+
+  loadQuickStats();
+
+  // Load admin logs
+  async function loadAdminLogs() {
+    try {
+      const logs = await getAdminLogs(100);
+      const logsBody = document.getElementById('admin-logs-body');
+      
+      if (logs.length === 0) {
+        logsBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">No activity logs found.</td></tr>`;
+        return;
+      }
+
+      logsBody.innerHTML = logs.map(log => {
+        const timestamp = new Date(log.timestamp).toLocaleString();
+        const actionBadge = getActionBadge(log.action);
+        
+        return `
+          <tr>
+            <td style="font-size: 12px; color: var(--text-muted);">${timestamp}</td>
+            <td>${actionBadge}</td>
+            <td style="max-width: 400px; word-wrap: break-word;">${log.details || '-'}</td>
+            <td>${log.username || log.userId || 'System'}</td>
+          </tr>
+        `;
+      }).join('');
+    } catch (err) {
+      console.error('Failed to load admin logs:', err);
+      document.getElementById('admin-logs-body').innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--danger-color);">Failed to load logs: ${err.message}</td></tr>`;
+    }
+  }
+
+  function getActionBadge(action) {
+    const badges = {
+      'GAME_APPROVED': '<span class="badge badge-approved">Game Approved</span>',
+      'GAME_REJECTED': '<span class="badge badge-rejected">Game Rejected</span>',
+      'GAME_DELETED': '<span class="badge badge-rejected">Game Deleted</span>',
+      'USER_BANNED': '<span class="badge badge-rejected">User Banned</span>',
+      'USER_PROMOTED': '<span class="badge badge-approved">User Promoted</span>',
+      'DEV_REQUEST_APPROVED': '<span class="badge badge-approved">Dev Approved</span>',
+      'DEV_REQUEST_REJECTED': '<span class="badge badge-rejected">Dev Rejected</span>',
+      'BUG_REPORT_RESOLVED': '<span class="badge badge-approved">Bug Resolved</span>',
+      'SUPPORT_TICKET_CLOSED': '<span class="badge badge-approved">Ticket Closed</span>',
+      'DEFAULT': '<span class="badge badge-pending">Action</span>'
+    };
+    return badges[action] || badges['DEFAULT'];
+  }
+
+  // Load logs initially and on refresh
+  loadAdminLogs();
+  document.getElementById('refresh-logs-btn').addEventListener('click', loadAdminLogs);
 
   // Pull bug reports
   try {
@@ -3138,6 +3584,12 @@ async function renderAdmin() {
           <tr>
             <td>
               <div style="display:flex;align-items:center;gap:8px;">
+                <button class="admin-view-stats" data-id="${game.id}" data-name="${game.name}"
+                  style="display:inline-flex;align-items:center;gap:4px;background:rgba(0,255,102,0.1);border:1px solid rgba(0,255,102,0.35);color:var(--accent-color);border-radius:6px;padding:3px 8px;font-size:11px;font-family:var(--font-display);cursor:pointer;transition:all 0.2s;flex-shrink:0;"
+                  onmouseover="this.style.background='rgba(0,255,102,0.25)';this.style.boxShadow='0 0 8px rgba(0,255,102,0.3)'"
+                  onmouseout="this.style.background='rgba(0,255,102,0.1)';this.style.boxShadow='none'">
+                  <i class="fas fa-chart-line"></i> Stats
+                </button>
                 <button class="admin-delete-game" data-id="${game.id}" data-name="${game.name}"
                   style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,51,102,0.1);border:1px solid rgba(255,51,102,0.35);color:var(--danger-color);border-radius:6px;padding:3px 8px;font-size:11px;font-family:var(--font-display);cursor:pointer;transition:all 0.2s;flex-shrink:0;"
                   onmouseover="this.style.background='rgba(255,51,102,0.25)';this.style.boxShadow='0 0 8px rgba(255,51,102,0.3)'"
@@ -3154,6 +3606,140 @@ async function renderAdmin() {
           </tr>
         `;
       }).join('');
+
+      // Bind stats buttons — show game statistics modal
+      approvedBody.querySelectorAll('.admin-view-stats').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const gameId = btn.getAttribute('data-id');
+          const gameName = btn.getAttribute('data-name');
+          
+          showLoader(true);
+          try {
+            const playStats = await getGamePlayStatistics(gameId, null);
+            
+            // Calculate statistics
+            const totalPlays = playStats.length;
+            const totalDuration = playStats.reduce((sum, p) => sum + (p.playDuration || 0), 0);
+            const avgPlaytime = totalPlays > 0 ? Math.round(totalDuration / totalPlays) : 0;
+            const avgPlaytimeDisplay = avgPlaytime > 0 ? `${Math.floor(avgPlaytime / 60)}m ${avgPlaytime % 60}s` : 'N/A';
+            
+            // Playtime distribution
+            const playtimeUnder1m = playStats.filter(p => p.playDuration < 60).length;
+            const playtime1_5m = playStats.filter(p => p.playDuration >= 60 && p.playDuration < 300).length;
+            const playtime5_15m = playStats.filter(p => p.playDuration >= 300 && p.playDuration < 900).length;
+            const playtime15_30m = playStats.filter(p => p.playDuration >= 900 && p.playDuration < 1800).length;
+            const playtime30_60m = playStats.filter(p => p.playDuration >= 1800 && p.playDuration < 3600).length;
+            const playtimeOver1h = playStats.filter(p => p.playDuration >= 3600).length;
+            
+            // Device distribution
+            const deviceDesktop = playStats.filter(p => p.device === 'desktop').length;
+            const deviceMobile = playStats.filter(p => p.device === 'mobile').length;
+            const deviceTablet = playStats.filter(p => p.device === 'tablet').length;
+            
+            // Unique players
+            const uniquePlayers = new Set(playStats.map(p => p.userId)).size;
+            
+            // Recent plays (last 7 days)
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            const recentPlays = playStats.filter(p => new Date(p.timestamp) >= sevenDaysAgo).length;
+            
+            const overlay = document.getElementById('modal-overlay');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            
+            modalTitle.innerHTML = `<i class="fas fa-chart-line" style="color:var(--accent-color);margin-right:8px;"></i> Game Statistics`;
+            modalBody.innerHTML = `
+              <div style="text-align:center;padding:10px 0 20px;">
+                <h3 style="color:var(--accent-color);font-size:20px;margin-bottom:5px;">${gameName}</h3>
+                <p style="color:var(--text-muted);font-size:14px;">Detailed play statistics</p>
+              </div>
+              
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:25px;">
+                <div style="background:rgba(0,255,102,0.1);border:1px solid rgba(0,255,102,0.3);border-radius:8px;padding:15px;text-align:center;">
+                  <div style="font-size:28px;font-weight:bold;color:var(--accent-color);">${totalPlays}</div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:5px;">Total Plays</div>
+                </div>
+                <div style="background:rgba(0,255,102,0.1);border:1px solid rgba(0,255,102,0.3);border-radius:8px;padding:15px;text-align:center;">
+                  <div style="font-size:28px;font-weight:bold;color:var(--accent-color);">${uniquePlayers}</div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:5px;">Unique Players</div>
+                </div>
+                <div style="background:rgba(0,255,102,0.1);border:1px solid rgba(0,255,102,0.3);border-radius:8px;padding:15px;text-align:center;">
+                  <div style="font-size:28px;font-weight:bold;color:var(--accent-color);">${avgPlaytimeDisplay}</div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:5px;">Avg Playtime</div>
+                </div>
+              </div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;">
+                <div>
+                  <h4 style="font-size:14px;margin-bottom:10px;color:var(--text-main);">Playtime Distribution</h4>
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;">
+                      <span style="font-size:12px;">Under 1 min</span>
+                      <span style="font-weight:bold;color:var(--accent-color);">${playtimeUnder1m}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;">
+                      <span style="font-size:12px;">1-5 min</span>
+                      <span style="font-weight:bold;color:var(--accent-color);">${playtime1_5m}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;">
+                      <span style="font-size:12px;">5-15 min</span>
+                      <span style="font-weight:bold;color:var(--accent-color);">${playtime5_15m}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;">
+                      <span style="font-size:12px;">15-30 min</span>
+                      <span style="font-weight:bold;color:var(--accent-color);">${playtime15_30m}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;">
+                      <span style="font-size:12px;">30-60 min</span>
+                      <span style="font-weight:bold;color:var(--accent-color);">${playtime30_60m}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;">
+                      <span style="font-size:12px;">Over 1 hour</span>
+                      <span style="font-weight:bold;color:var(--accent-color);">${playtimeOver1h}</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 style="font-size:14px;margin-bottom:10px;color:var(--text-main);">Device Distribution</h4>
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;">
+                      <span style="font-size:12px;"><i class="fas fa-desktop"></i> Desktop</span>
+                      <span style="font-weight:bold;color:var(--accent-color);">${deviceDesktop}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;">
+                      <span style="font-size:12px;"><i class="fas fa-mobile-alt"></i> Mobile</span>
+                      <span style="font-weight:bold;color:var(--accent-color);">${deviceMobile}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;">
+                      <span style="font-size:12px;"><i class="fas fa-tablet-alt"></i> Tablet</span>
+                      <span style="font-weight:bold;color:var(--accent-color);">${deviceTablet}</span>
+                    </div>
+                  </div>
+                  
+                  <h4 style="font-size:14px;margin-bottom:10px;margin-top:20px;color:var(--text-main);">Recent Activity</h4>
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;justify-content:space-between;padding:8px;background:rgba(255,255,255,0.05);border-radius:4px;">
+                      <span style="font-size:12px;">Last 7 days</span>
+                      <span style="font-weight:bold;color:var(--accent-color);">${recentPlays}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <button id="close-stats-modal-btn" class="btn btn-secondary" style="width:100%;padding:12px;">
+                Close
+              </button>
+            `;
+            overlay.classList.add('active');
+            
+            document.getElementById('close-stats-modal-btn').onclick = () => overlay.classList.remove('active');
+          } catch (err) {
+            showToast('Failed to load game statistics: ' + err.message, 'danger');
+          } finally {
+            showLoader(false);
+          }
+        });
+      });
 
       // Bind delete buttons — styled modal + immediate Firebase deletion
       approvedBody.querySelectorAll('.admin-delete-game').forEach(btn => {
@@ -5563,6 +6149,120 @@ const PUBLIC_ARTICLES = {
         <li><strong>Legal info pages</strong> — terms of use, privacy, and contact</li>
       </ul>
     `
+  },
+  'game-dev-tips': {
+    title: 'Tips for Aspiring Game Developers',
+    date: 'July 1, 2026',
+    icon: 'fa-code',
+    excerpt: 'Learn how to create and publish your own games on DIGGY.',
+    content: `
+      <p>Want to become a game developer on DIGGY? Here are some tips to get started:</p>
+      <h3>Start Simple</h3>
+      <p>Begin with small, manageable projects. A simple arcade game is a great way to learn the basics of game development.</p>
+      <h3>Choose Your Tools</h3>
+      <ul>
+        <li><strong>HTML5/JavaScript</strong> — Perfect for web-based games</li>
+        <li><strong>Unity</strong> — Powerful engine for 2D and 3D games</li>
+        <li><strong>Godot</strong> — Free and open-source game engine</li>
+        <li><strong>Construct 3</strong> — Easy drag-and-drop game maker</li>
+      </ul>
+      <h3>Test Thoroughly</h3>
+      <p>Test your game on different browsers and devices. Make sure the controls are intuitive and the game is fun to play.</p>
+      <h3>Submit to DIGGY</h3>
+      <p>Once your game is ready, apply for a developer account and submit your game. Our team will review it and publish it if it meets our quality standards.</p>
+    `
+  },
+  'leaderboard-system': {
+    title: 'Understanding the Leaderboard System',
+    date: 'July 5, 2026',
+    icon: 'fa-trophy',
+    excerpt: 'How games are ranked and what makes a game popular.',
+    content: `
+      <p>The DIGGY leaderboard showcases the top games across all categories. Here's how it works:</p>
+      <h3>Ranking Criteria</h3>
+      <ul>
+        <li><strong>Number of Plays</strong> — Games with more plays rank higher</li>
+        <li><strong>Average Rating</strong> — Higher rated games get priority</li>
+        <li><strong>Recent Activity</strong> — Active games get a boost</li>
+      </ul>
+      <h3>Category Rankings</h3>
+      <p>Each category (RPG, ACTION, PUZZLE, etc.) has its own leaderboard. This helps players discover the best games in their favorite genres.</p>
+      <h3>How to Climb the Ranks</h3>
+      <ul>
+        <li>Create engaging, fun gameplay</li>
+        <li>Encourage players to rate your game</li>
+        <li>Keep your game updated with new features</li>
+        <li>Respond to player feedback and bug reports</li>
+      </ul>
+    `
+  },
+  'bug-reporting': {
+    title: 'How to Report Bugs Effectively',
+    date: 'July 8, 2026',
+    icon: 'fa-bug',
+    excerpt: 'Help us improve games by reporting bugs the right way.',
+    content: `
+      <p>Found a bug in a game? Help us fix it by reporting it properly:</p>
+      <h3>What to Include</h3>
+      <ul>
+        <li><strong>Game Name</strong> — Which game has the bug?</li>
+        <li><strong>Description</strong> — What happened? What did you expect to happen?</li>
+        <li><strong>Steps to Reproduce</strong> — What actions lead to the bug?</li>
+        <li><strong>Screenshot</strong> — If possible, include a screenshot of the bug</li>
+      </ul>
+      <h3>Where to Report</h3>
+      <p>Use the bug report button on the game page, or contact us through the <a href="#/contact" style="color: var(--accent-color);">contact page</a>.</p>
+      <h3>What Happens Next</h3>
+      <p>Our team reviews all bug reports and forwards them to the game developer. You'll be notified when the bug is fixed.</p>
+    `
+  },
+  'account-security': {
+    title: 'Keeping Your Account Secure',
+    date: 'July 10, 2026',
+    icon: 'fa-lock',
+    excerpt: 'Best practices for protecting your DIGGY account.',
+    content: `
+      <p>Account security is important. Here's how to keep your DIGGY account safe:</p>
+      <h3>Password Tips</h3>
+      <ul>
+        <li>Use a strong password with at least 8 characters</li>
+        <li>Include a mix of letters, numbers, and symbols</li>
+        <li>Don't reuse passwords from other sites</li>
+        <li>Change your password regularly</li>
+      </ul>
+      <h3>Two-Factor Authentication</h3>
+      <p>We recommend enabling two-factor authentication (2FA) for extra security. This adds an extra layer of protection to your account.</p>
+      <h3>Recognize Phishing</h3>
+      <ul>
+        <li>DIGGY will never ask for your password via email</li>
+        <li>Check the URL before entering your credentials</li>
+        <li>Report suspicious emails to our support team</li>
+      </ul>
+    `
+  },
+  'mobile-gaming': {
+    title: 'Gaming on Mobile Devices',
+    date: 'July 12, 2026',
+    icon: 'fa-mobile-alt',
+    excerpt: 'Tips for the best mobile gaming experience on DIGGY.',
+    content: `
+      <p>DIGGY works great on mobile devices! Here's how to get the best experience:</p>
+      <h3>Optimal Settings</h3>
+      <ul>
+        <li>Use landscape mode for better gameplay</li>
+        <li>Enable auto-rotate in your device settings</li>
+        <li>Close other apps to free up memory</li>
+        <li>Connect to WiFi for faster loading</li>
+      </ul>
+      <h3>Touch Controls</h3>
+      <p>Many games on DIGGY are optimized for touch controls. Look for games with the "Mobile Friendly" badge.</p>
+      <h3>Browser Recommendations</h3>
+      <ul>
+        <li><strong>Chrome</strong> — Best overall performance</li>
+        <li><strong>Safari</strong> — Great on iOS devices</li>
+        <li><strong>Firefox</strong> — Good alternative option</li>
+      </ul>
+    `
   }
 };
 
@@ -5978,6 +6678,12 @@ async function renderContact() {
 
       if (!name || !email || !subject || !message) {
         showToast('Please fill in all fields.', 'warning');
+        return;
+      }
+
+      // Check for profanity
+      if (containsProfanity(name) || containsProfanity(subject) || containsProfanity(message)) {
+        showToast('Please remove inappropriate language from your request.', 'danger');
         return;
       }
 

@@ -9,6 +9,35 @@ const firebaseConfig = {
   measurementId: "G-ZW5KTPNQ3G"
 };
 
+// Profanity filter - common inappropriate words
+const profanityList = [
+  'fuck', 'shit', 'ass', 'bitch', 'damn', 'hell', 'crap', 'piss',
+  'dick', 'cock', 'pussy', 'whore', 'slut', 'bastard', 'cunt',
+  'fag', 'nigger', 'nigga', 'retard', 'idiot', 'stupid', 'dumb',
+  'wanker', 'twat', 'arse', 'bollocks', 'prick', 'knob',
+  // Hebrew profanity
+  'זין', 'כוס', 'תחת', 'שרמוטה', 'זונה', 'חרא', 'מזדיין', 'מזדיינת',
+  'בן זונה', 'בת זונה', 'כוסעמק', 'כוס אמק', 'תחתון', 'תחתניק',
+  'זיון', 'זיינית', 'מפגר', 'אידיוט', 'טמבל', 'שמוק', 'בן כלבה',
+  'בת כלבה', 'אחור', 'כוסית', 'זונמט', 'זונמטה'
+];
+
+export function containsProfanity(text) {
+  if (!text || typeof text !== 'string') return false;
+  const lowerText = text.toLowerCase();
+  return profanityList.some(word => lowerText.includes(word));
+}
+
+export function filterProfanity(text) {
+  if (!text || typeof text !== 'string') return text;
+  let filtered = text;
+  profanityList.forEach(word => {
+    const regex = new RegExp(word, 'gi');
+    filtered = filtered.replace(regex, '*'.repeat(word.length));
+  });
+  return filtered;
+}
+
 // Global variables for Firebase services
 let app = null;
 let auth = null;
@@ -1479,6 +1508,226 @@ export async function deleteGame(gameId) {
   // Remove from localStorage cache
   const games = getLocalStorageData('games');
   saveLocalStorageData('games', games.filter(g => g.id !== gameId));
+}
+
+// --- ADMIN LOGGING ---
+
+export async function logAdminAction(action, details, userId = null, username = null) {
+  await firebaseReadyPromise;
+
+  const logEntry = {
+    id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    action: action,
+    details: details,
+    userId: userId,
+    username: username,
+    timestamp: new Date().toISOString(),
+    ipAddress: null // Could be enhanced with IP detection
+  };
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "admin_logs"), logEntry);
+    } catch (e) {
+      console.error("Failed to log admin action to Firebase:", e);
+    }
+  }
+
+  // Fallback to localStorage
+  const logs = getLocalStorageData('admin_logs') || [];
+  logs.push(logEntry);
+  // Keep only last 1000 logs in localStorage
+  if (logs.length > 1000) {
+    logs.splice(0, logs.length - 1000);
+  }
+  saveLocalStorageData('admin_logs', logs);
+}
+
+export async function getAdminLogs(limit = 100) {
+  await firebaseReadyPromise;
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const q = firebaseFirestore.query(
+        firebaseFirestore.collection(db, "admin_logs"),
+        firebaseFirestore.orderBy("timestamp", "desc"),
+        firebaseFirestore.limit(limit)
+      );
+      const snap = await firebaseFirestore.getDocs(q);
+      return snap.docs.map(doc => doc.data());
+    } catch (e) {
+      console.error("Failed to fetch admin logs from Firebase:", e);
+    }
+  }
+
+  // Fallback to localStorage
+  const logs = getLocalStorageData('admin_logs') || [];
+  return logs.slice(-limit).reverse();
+}
+
+// --- DEVELOPER-ADMIN CHAT ---
+
+export async function sendDevChatMessage(senderUid, senderName, senderRole, message) {
+  await firebaseReadyPromise;
+
+  const chatMessage = {
+    id: 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    senderUid,
+    senderName,
+    senderRole,
+    message,
+    timestamp: new Date().toISOString()
+  };
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "dev_admin_chat"), chatMessage);
+    } catch (e) {
+      console.error("Failed to send dev chat message to Firebase:", e);
+    }
+  }
+
+  // Fallback to localStorage
+  const messages = getLocalStorageData('dev_admin_chat') || [];
+  messages.push(chatMessage);
+  // Keep only last 500 messages in localStorage
+  if (messages.length > 500) {
+    messages.splice(0, messages.length - 500);
+  }
+  saveLocalStorageData('dev_admin_chat', messages);
+
+  return chatMessage;
+}
+
+export async function getDevChatMessages(limit = 50) {
+  await firebaseReadyPromise;
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const q = firebaseFirestore.query(
+        firebaseFirestore.collection(db, "dev_admin_chat"),
+        firebaseFirestore.orderBy("timestamp", "desc"),
+        firebaseFirestore.limit(limit)
+      );
+      const snap = await firebaseFirestore.getDocs(q);
+      return snap.docs.map(doc => doc.data()).reverse();
+    } catch (e) {
+      console.error("Failed to fetch dev chat messages from Firebase:", e);
+    }
+  }
+
+  // Fallback to localStorage
+  const messages = getLocalStorageData('dev_admin_chat') || [];
+  return messages.slice(-limit);
+}
+
+// --- GAME PLAY TRACKING ---
+
+export async function recordGamePlay(gameId, gameName, userId, username) {
+  await firebaseReadyPromise;
+
+  const playRecord = {
+    id: 'play_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    gameId,
+    gameName,
+    userId,
+    username,
+    timestamp: new Date().toISOString(),
+    device: getDeviceInfo(),
+    playDuration: 0 // Will be updated when game is closed
+  };
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      await firebaseFirestore.addDoc(firebaseFirestore.collection(db, "game_plays"), playRecord);
+    } catch (e) {
+      console.error("Failed to record game play to Firebase:", e);
+    }
+  }
+
+  // Fallback to localStorage
+  const plays = getLocalStorageData('game_plays') || [];
+  plays.push(playRecord);
+  // Keep only last 1000 plays in localStorage
+  if (plays.length > 1000) {
+    plays.splice(0, plays.length - 1000);
+  }
+  saveLocalStorageData('game_plays', plays);
+
+  return playRecord;
+}
+
+export async function updateGamePlayDuration(playId, durationSeconds) {
+  await firebaseReadyPromise;
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      const q = firebaseFirestore.query(
+        firebaseFirestore.collection(db, "game_plays"),
+        firebaseFirestore.where("id", "==", playId)
+      );
+      const snap = await firebaseFirestore.getDocs(q);
+      if (!snap.empty) {
+        await firebaseFirestore.updateDoc(snap.docs[0].ref, { playDuration: durationSeconds });
+      }
+    } catch (e) {
+      console.error("Failed to update play duration in Firebase:", e);
+    }
+  }
+
+  // Update localStorage
+  const plays = getLocalStorageData('game_plays') || [];
+  const playIndex = plays.findIndex(p => p.id === playId);
+  if (playIndex !== -1) {
+    plays[playIndex].playDuration = durationSeconds;
+    saveLocalStorageData('game_plays', plays);
+  }
+}
+
+export async function getGamePlayStatistics(gameId = null, userId = null) {
+  await firebaseReadyPromise;
+
+  let plays = [];
+
+  if (firebaseLoaded && !fallbackMode) {
+    try {
+      let q = firebaseFirestore.collection(db, "game_plays");
+      
+      if (gameId) {
+        q = firebaseFirestore.query(q, firebaseFirestore.where("gameId", "==", gameId));
+      }
+      if (userId) {
+        q = firebaseFirestore.query(q, firebaseFirestore.where("userId", "==", userId));
+      }
+      
+      const snap = await firebaseFirestore.getDocs(q);
+      plays = snap.docs.map(doc => doc.data());
+    } catch (e) {
+      console.error("Failed to fetch game plays from Firebase:", e);
+    }
+  }
+
+  // Fallback to localStorage
+  if (plays.length === 0) {
+    plays = getLocalStorageData('game_plays') || [];
+    if (gameId) plays = plays.filter(p => p.gameId === gameId);
+    if (userId) plays = plays.filter(p => p.userId === userId);
+  }
+
+  return plays;
+}
+
+function getDeviceInfo() {
+  const ua = navigator.userAgent;
+  let device = 'desktop';
+  
+  if (/Mobile|Android|iPhone/i.test(ua)) {
+    device = 'mobile';
+  } else if (/Tablet|iPad/i.test(ua)) {
+    device = 'tablet';
+  }
+  
+  return device;
 }
 
 // --- BUG REPORTS ---
